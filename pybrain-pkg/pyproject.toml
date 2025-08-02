@@ -3,7 +3,7 @@ requires = ["setuptools>=65", "wheel", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pybrain"
+name = "brainsait-pybrain"
 version = "0.1.0"
 description = "Unified Healthcare Intelligence Platform - AI-powered healthcare data harmonization and decision support"
 readme = "README.md"
