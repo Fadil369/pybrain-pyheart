@@ -1,0 +1,607 @@
+name: Test PyBrain & PyHeart - Healthcare AI Integration
+
+on:
+  push:
+    branches: [ main, develop, feature/healthcare-*, hotfix/* ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run nightly security scans
+    - cron: '0 2 * * *'
+
+env:
+  PYTHONPATH: ${{ github.workspace }}
+  HEALTHCARE_TEST_ENV: ci
+  HIPAA_COMPLIANCE_LEVEL: strict
+
+jobs:
+  # Core testing with healthcare focus
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+        healthcare-profile: [basic, advanced, enterprise]
+        exclude:
+          # Optimize CI resources
+          - os: windows-latest
+            python-version: '3.9'
+            healthcare-profile: basic
+          - os: macos-latest
+            python-version: '3.9'
+            healthcare-profile: basic
+          # Enterprise testing only on latest systems
+          - healthcare-profile: enterprise
+            python-version: '3.9'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for security scanning
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Clear pip cache
+        run: pip cache purge
+      
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ matrix.healthcare-profile }}-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ matrix.healthcare-profile }}-
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+            ${{ runner.os }}-pip-
+      
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libffi-dev libssl-dev python3-dev
+          # Healthcare-specific dependencies
+          sudo apt-get install -y libxml2-dev libxslt1-dev zlib1g-dev
+      
+      - name: Install base dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install pytest pytest-cov pytest-asyncio pytest-mock pytest-xdist
+          pip install pytest-healthcare pytest-hipaa-compliance
+      
+      - name: Install healthcare-specific dependencies
+        run: |
+          pip install hl7apy python-hl7 dicom2nifti pydicom
+          pip install cryptography python-jose pycryptodome
+          pip install sqlalchemy psycopg2-binary pymongo redis
+          pip install fastapi uvicorn httpx aiohttp
+          pip install pandas numpy scipy scikit-learn
+          pip install spacy transformers torch
+      
+      - name: Configure healthcare profile
+        run: |
+          echo "Setting up healthcare profile: ${{ matrix.healthcare-profile }}"
+          if [ "${{ matrix.healthcare-profile }}" == "enterprise" ]; then
+            pip install enterprise-healthcare-extensions
+            echo "ENABLE_ENTERPRISE_FEATURES=true" >> $GITHUB_ENV
+          fi
+      
+      - name: Install PyBrain with healthcare extensions
+        run: |
+          cd pybrain-pkg
+          pip install -e .[dev,healthcare,hipaa,integration]
+      
+      - name: Install PyHeart with healthcare extensions
+        run: |
+          cd pyheart-pkg
+          pip install -e .[dev,healthcare,hipaa,integration]
+      
+      - name: Verify installations
+        run: |
+          python -c "import pybrain; print(f'PyBrain version: {pybrain.__version__}')"
+          python -c "import pyheart; print(f'PyHeart version: {pyheart.__version__}')"
+          python -c "import spacy, hl7apy, pydicom; print('Healthcare dependencies OK')"
+      
+      # Core testing
+      - name: Test PyBrain Core
+        run: |
+          cd pybrain-pkg
+          pytest tests/core/ -v --cov=pybrain.core --cov-report=xml:coverage-core.xml --cov-report=term-missing
+      
+      - name: Test PyHeart Core
+        run: |
+          cd pyheart-pkg
+          pytest tests/core/ -v --cov=pyheart.core --cov-report=xml:coverage-core.xml --cov-report=term-missing
+      
+      # Healthcare-specific testing
+      - name: Test Healthcare Integrations
+        run: |
+          cd pybrain-pkg
+          pytest tests/healthcare/ -v --cov=pybrain.healthcare --cov-report=xml:coverage-healthcare.xml --cov-report=term-missing --healthcare-profile=${{ matrix.healthcare-profile }}
+          cd ../pyheart-pkg
+          pytest tests/healthcare/ -v --cov=pyheart.healthcare --cov-report=xml:coverage-healthcare.xml --cov-report=term-missing --healthcare-profile=${{ matrix.healthcare-profile }}
+      
+      - name: Test HL7 FHIR Integration
+        run: |
+          pytest tests/integration/hl7_fhir/ -v --cov=pybrain.integrations.hl7 --cov=pyheart.integrations.hl7 --cov-report=xml:coverage-hl7.xml
+      
+      - name: Test DICOM Processing
+        run: |
+          pytest tests/integration/dicom/ -v --cov=pybrain.integrations.dicom --cov=pyheart.integrations.dicom --cov-report=xml:coverage-dicom.xml
+      
+      - name: Test EHR Systems Integration  
+        run: |
+          pytest tests/integration/ehr/ -v --cov=pybrain.integrations.ehr --cov=pyheart.integrations.ehr --cov-report=xml:coverage-ehr.xml --slow
+      
+      # Upload coverage reports
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./pybrain-pkg/coverage-*.xml,./pyheart-pkg/coverage-*.xml
+          flags: healthcare,integration,${{ matrix.healthcare-profile }}
+          fail_ci_if_error: false
+
+  # HIPAA Compliance and Security Testing
+  hipaa-compliance:
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Clear pip cache
+        run: pip cache purge
+      
+      - name: Install HIPAA compliance tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit safety semgrep
+          pip install hipaa-compliance-checker healthcare-security-scanner
+          pip install cryptography-audit pii-detector
+      
+      - name: Install packages for scanning
+        run: |
+          cd pybrain-pkg && pip install -e .[dev,healthcare,hipaa]
+          cd ../pyheart-pkg && pip install -e .[dev,healthcare,hipaa]
+      
+      - name: HIPAA Compliance Scan
+        run: |
+          echo "🏥 Running HIPAA Compliance Checks..."
+          bandit -r pybrain-pkg/src/ pyheart-pkg/src/ \
+            -f json -o bandit-hipaa-report.json \
+            --skip B101,B601 \
+            --severity-level medium
+      
+      - name: PII Detection Scan
+        run: |
+          echo "🔍 Scanning for PII exposure..."
+          pii-detector scan \
+            --path pybrain-pkg/src/ \
+            --path pyheart-pkg/src/ \
+            --output pii-report.json \
+            --include-tests
+      
+      - name: Healthcare Data Security Scan
+        run: |
+          echo "🛡️ Healthcare-specific security scanning..."
+          healthcare-security-scanner \
+            --source-dirs pybrain-pkg/src/,pyheart-pkg/src/ \
+            --config .healthcare-security.yaml \
+            --output healthcare-security-report.json
+      
+      - name: Cryptography Audit
+        run: |
+          echo "🔐 Auditing cryptographic implementations..."
+          cryptography-audit \
+            --recursive pybrain-pkg/src/ pyheart-pkg/src/ \
+            --standards hipaa,hitech \
+            --output crypto-audit-report.json
+      
+      - name: Advanced Security Scan with Semgrep
+        run: |
+          echo "🎯 Advanced security pattern detection..."
+          semgrep \
+            --config=p/security-audit \
+            --config=p/owasp-top-ten \
+            --config=p/hipaa \
+            --json \
+            --output semgrep-security-report.json \
+            pybrain-pkg/src/ pyheart-pkg/src/
+        continue-on-error: true
+      
+      - name: Dependency Security Check
+        run: |
+          echo "📦 Checking dependencies for vulnerabilities..."
+          cd pybrain-pkg && safety check --json --output ../safety-pybrain.json
+          cd ../pyheart-pkg && safety check --json --output ../safety-pyheart.json
+        continue-on-error: true
+      
+      - name: Generate HIPAA Compliance Report
+        run: |
+          echo "📋 Generating comprehensive HIPAA compliance report..."
+          hipaa-compliance-checker generate-report \
+            --bandit-report bandit-hipaa-report.json \
+            --pii-report pii-report.json \
+            --security-report healthcare-security-report.json \
+            --crypto-report crypto-audit-report.json \
+            --safety-reports safety-pybrain.json,safety-pyheart.json \
+            --output hipaa-compliance-report.html
+      
+      - name: Upload security artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: hipaa-compliance-reports
+          path: |
+            *-report.json
+            hipaa-compliance-report.html
+
+  # Healthcare System Integration Testing
+  integration-testing:
+    runs-on: ubuntu-latest
+    needs: [test]
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: healthcare_test_db
+          POSTGRES_DB: healthcare_integration_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+      
+      mongodb:
+        image: mongo:6
+        env:
+          MONGO_INITDB_ROOT_USERNAME: healthcare_user
+          MONGO_INITDB_ROOT_PASSWORD: healthcare_pass
+        options: >-
+          --health-cmd "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Clear pip cache
+        run: pip cache purge
+      
+      - name: Install integration testing dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio pytest-integration docker-compose
+          pip install testcontainers[postgres,redis,mongodb]
+          pip install requests httpx websockets
+      
+      - name: Install packages with integration extras
+        run: |
+          cd pybrain-pkg && pip install -e .[dev,healthcare,integration,testing]
+          cd ../pyheart-pkg && pip install -e .[dev,healthcare,integration,testing]
+      
+      - name: Setup test databases
+        run: |
+          echo "🗄️ Setting up healthcare test databases..."
+          python scripts/setup_test_databases.py
+        env:
+          DATABASE_URL: postgresql://postgres:healthcare_test_db@localhost:5432/healthcare_integration_test
+          REDIS_URL: redis://localhost:6379/0
+          MONGODB_URL: mongodb://healthcare_user:healthcare_pass@localhost:27017/healthcare_test
+      
+      - name: Test Database Integrations
+        run: |
+          echo "🔗 Testing database integrations..."
+          pytest tests/integration/database/ -v \
+            --cov=pybrain.integrations.database \
+            --cov=pyheart.integrations.database \
+            --cov-report=xml:coverage-database.xml
+        env:
+          DATABASE_URL: postgresql://postgres:healthcare_test_db@localhost:5432/healthcare_integration_test
+          REDIS_URL: redis://localhost:6379/0
+          MONGODB_URL: mongodb://healthcare_user:healthcare_pass@localhost:27017/healthcare_test
+      
+      - name: Test EHR System Integrations
+        run: |
+          echo "🏥 Testing EHR integrations..."
+          pytest tests/integration/ehr_systems/ -v \
+            --cov=pybrain.integrations.ehr \
+            --cov=pyheart.integrations.ehr \
+            --cov-report=xml:coverage-ehr-integration.xml \
+            --timeout=300
+      
+      - name: Test Healthcare API Integrations
+        run: |
+          echo "🔌 Testing healthcare API integrations..."
+          pytest tests/integration/api/ -v \
+            --cov=pybrain.integrations.api \
+            --cov=pyheart.integrations.api \
+            --cov-report=xml:coverage-api-integration.xml
+      
+      - name: Test Real-time Healthcare Data Streaming
+        run: |
+          echo "📡 Testing real-time data streaming..."
+          pytest tests/integration/streaming/ -v \
+            --cov=pybrain.streaming \
+            --cov=pyheart.streaming \
+            --cov-report=xml:coverage-streaming.xml
+      
+      - name: Test Healthcare Workflow Orchestration
+        run: |
+          echo "⚙️ Testing workflow orchestration..."
+          pytest tests/integration/workflows/ -v \
+            --cov=pybrain.workflows \
+            --cov=pyheart.workflows \
+            --cov-report=xml:coverage-workflows.xml
+      
+      - name: Test System Fragmentation Resolution
+        run: |
+          echo "🔧 Testing fragmentation resolution capabilities..."
+          pytest tests/integration/fragmentation/ -v \
+            --cov=pybrain.fragmentation \
+            --cov=pyheart.fragmentation \
+            --cov-report=xml:coverage-fragmentation.xml
+      
+      - name: Upload integration coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: coverage-*.xml
+          flags: integration,healthcare-systems
+          fail_ci_if_error: false
+
+  # Code Quality and Linting
+  lint-and-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Clear pip cache
+        run: pip cache purge
+      
+      - name: Install linting and quality tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install black flake8 isort mypy pylint
+          pip install healthcare-code-standards medical-naming-conventions
+          pip install pre-commit-hooks complexity-analyzer
+      
+      - name: Check code formatting with Black
+        run: |
+          echo "🖤 Checking code formatting..."
+          black --check --diff pybrain-pkg/src/ pyheart-pkg/src/
+      
+      - name: Check import sorting with isort
+        run: |
+          echo "📚 Checking import organization..."
+          isort --check-only --diff pybrain-pkg/src/ pyheart-pkg/src/
+      
+      - name: Lint with flake8
+        run: |
+          echo "🔍 Running flake8 linting..."
+          flake8 pybrain-pkg/src/ pyheart-pkg/src/ \
+            --max-line-length=100 \
+            --extend-ignore=E203,W503 \
+            --exclude=__pycache__,*.pyc,.git,build,dist
+      
+      - name: Advanced linting with pylint
+        run: |
+          echo "🔬 Running advanced linting..."
+          pylint pybrain-pkg/src/pybrain/ pyheart-pkg/src/pyheart/ \
+            --rcfile=.pylintrc \
+            --output-format=json \
+            --reports=y > pylint-report.json
+        continue-on-error: true
+      
+      - name: Type checking with mypy
+        run: |
+          echo "🔍 Type checking..."
+          mypy pybrain-pkg/src/pybrain/ --config-file mypy.ini
+          mypy pyheart-pkg/src/pyheart/ --config-file mypy.ini
+        continue-on-error: true
+      
+      - name: Healthcare naming conventions check
+        run: |
+          echo "🏥 Checking healthcare naming conventions..."
+          medical-naming-conventions check \
+            --source-dirs pybrain-pkg/src/,pyheart-pkg/src/ \
+            --standards hl7,fhir,snomed \
+            --output naming-conventions-report.json
+        continue-on-error: true
+      
+      - name: Code complexity analysis
+        run: |
+          echo "📊 Analyzing code complexity..."
+          complexity-analyzer \
+            --paths pybrain-pkg/src/,pyheart-pkg/src/ \
+            --max-complexity 10 \
+            --output complexity-report.json
+        continue-on-error: true
+
+  # Performance and Load Testing
+  performance-testing:
+    runs-on: ubuntu-latest
+    needs: [integration-testing]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install performance testing tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest-benchmark locust pytest-xdist
+          pip install memory-profiler line-profiler py-spy
+          pip install healthcare-performance-metrics
+      
+      - name: Install packages
+        run: |
+          cd pybrain-pkg && pip install -e .[dev,healthcare,performance]
+          cd ../pyheart-pkg && pip install -e .[dev,healthcare,performance]
+      
+      - name: Healthcare Data Processing Benchmarks
+        run: |
+          echo "⚡ Running healthcare data processing benchmarks..."
+          pytest tests/performance/healthcare_benchmarks.py -v \
+            --benchmark-only \
+            --benchmark-json=healthcare-benchmarks.json
+      
+      - name: EHR Integration Performance Tests
+        run: |
+          echo "🏥 Testing EHR integration performance..."
+          pytest tests/performance/ehr_performance.py -v \
+            --benchmark-only \
+            --benchmark-json=ehr-performance.json
+      
+      - name: Memory Usage Analysis
+        run: |
+          echo "💾 Analyzing memory usage patterns..."
+          python -m memory_profiler tests/performance/memory_usage_test.py > memory-profile.txt
+      
+      - name: Load Testing with Locust
+        run: |
+          echo "🔄 Running load tests..."
+          locust -f tests/performance/load_test.py \
+            --headless \
+            --users 100 \
+            --spawn-rate 10 \
+            --run-time 300s \
+            --host http://localhost:8000 \
+            --html load-test-report.html
+        continue-on-error: true
+      
+      - name: Upload performance reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-reports
+          path: |
+            *-benchmarks.json
+            *-performance.json
+            memory-profile.txt
+            load-test-report.html
+
+  # Documentation and API Documentation
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install documentation tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install sphinx sphinx-rtd-theme sphinx-autodoc-typehints
+          pip install mkdocs mkdocs-material mkdocstrings
+          pip install healthcare-docs-generator api-documentation-builder
+      
+      - name: Install packages
+        run: |
+          cd pybrain-pkg && pip install -e .[dev,docs]
+          cd ../pyheart-pkg && pip install -e .[dev,docs]
+      
+      - name: Build API Documentation
+        run: |
+          echo "📚 Building API documentation..."
+          sphinx-build -b html docs/ _build/html/
+      
+      - name: Generate Healthcare Integration Docs
+        run: |
+          echo "🏥 Generating healthcare integration documentation..."
+          healthcare-docs-generator \
+            --source-dirs pybrain-pkg/src/,pyheart-pkg/src/ \
+            --output-dir healthcare-docs/ \
+            --include-examples \
+            --include-compliance-notes
+      
+      - name: Build User Documentation
+        run: |
+          echo "📖 Building user documentation..."
+          mkdocs build --site-dir user-docs/
+      
+      - name: Deploy documentation
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_build/html
+          destination_dir: api-docs
+
+  # Final integration and deployment readiness
+  deployment-readiness:
+    runs-on: ubuntu-latest
+    needs: [test, hipaa-compliance, integration-testing, lint-and-quality, performance-testing]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install deployment tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine docker-compose
+          pip install healthcare-deployment-validator
+      
+      - name: Build packages
+        run: |
+          echo "📦 Building distribution packages..."
+          cd pybrain-pkg && python -m build
+          cd ../pyheart-pkg && python -m build
+      
+      - name: Validate healthcare deployment readiness
+        run: |
+          echo "✅ Validating healthcare deployment readiness..."
+          healthcare-deployment-validator \
+            --packages pybrain-pkg/dist/,pyheart-pkg/dist/ \
+            --compliance-level hipaa \
+            --integration-tests-passed \
+            --security-scans-passed
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: healthcare-ai-packages
+          path: |
+            pybrain-pkg/dist/*
+            pyheart-pkg/dist/*
