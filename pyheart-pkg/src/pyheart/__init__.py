@@ -14,6 +14,11 @@ from pyheart.core.server import FHIRServer, APIGateway
 from pyheart.core.workflow import WorkflowEngine, ProcessDefinition
 from pyheart.core.integration import IntegrationHub, Adapter
 from pyheart.core.security import SecurityManager, AuthProvider
+from pyheart.core.plugins import (
+    Plugin, PluginManager, PluginRegistry, PluginType, 
+    PluginMetadata, get_plugin_manager
+)
+from pyheart.plugins import InsuranceAdapter, GovernmentAdapter, ProviderAdapter
 
 __all__ = [
     "FHIRClient",
@@ -26,6 +31,15 @@ __all__ = [
     "Adapter",
     "SecurityManager",
     "AuthProvider",
+    "Plugin",
+    "PluginManager",
+    "PluginRegistry",
+    "PluginType",
+    "PluginMetadata",
+    "get_plugin_manager",
+    "InsuranceAdapter",
+    "GovernmentAdapter",
+    "ProviderAdapter",
 ]
 
 # Configure structured logging

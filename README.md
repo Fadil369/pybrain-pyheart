@@ -20,6 +20,7 @@ AI-powered healthcare intelligence platform providing:
 
 ### ❤️ **PyHeart** - The Integration Layer  
 Universal healthcare system connectivity platform providing:
+- **🔌 Plug-and-Play SDK**: Pre-built plugins for providers, insurance companies, and government offices
 - **Universal API Gateway**: Single interface for all healthcare integrations
 - **Event-Driven Architecture**: Real-time data streaming and processing
 - **Microservices Framework**: Modular, scalable healthcare services
@@ -61,6 +62,42 @@ fhir_data = harmonizer.harmonize_to_fhir(hl7_data, "hl7v2", "Patient")
 engine = WorkflowEngine()
 instance_id = await engine.start_process("patient-admission", variables)
 ```
+
+### 🔌 Plugin System (New!)
+
+**Plug-and-Play Integration** for healthcare organizations:
+
+```python
+from pyheart import PluginManager, InsuranceAdapter, GovernmentAdapter, ProviderAdapter
+
+# Initialize plugin manager
+plugin_manager = PluginManager()
+
+# Load insurance plugin for claims processing
+insurance = InsuranceAdapter(config={
+    "system_id": "acme_insurance",
+    "base_url": "https://api.insurance.com",
+    "api_key": "your-key"
+})
+plugin_manager.registry.register_plugin("insurance", insurance)
+
+# Load government plugin for public health reporting
+government = GovernmentAdapter(config={
+    "system_id": "public_health",
+    "agency_type": "public_health",
+    "jurisdiction": "CA"
+})
+plugin_manager.registry.register_plugin("government", government)
+
+# Start all plugins
+await plugin_manager.start()
+
+# Use plugins
+await insurance.send_data("Claim", claim_data)
+await government.send_data("PublicHealthCase", report_data)
+```
+
+**📖 See [QUICKSTART_PLUGINS.md](QUICKSTART_PLUGINS.md) for 5-minute quickstart or [PLUGINS.md](PLUGINS.md) for complete documentation.**
 
 ## 🏗️ Architecture
 
@@ -116,11 +153,54 @@ pybrain-pyheart/
 │   ├── README.md             # PyHeart documentation
 │   └── pyproject.toml        # Package configuration
 │
+├── examples/
+│   └── plugins/              # Plugin usage examples
+│       ├── insurance_example.py    # Insurance company integration
+│       ├── government_example.py   # Government office integration
+│       ├── provider_example.py     # Healthcare provider integration
+│       └── plugin_config.yaml      # Configuration example
 ├── build_and_publish.py      # Automated build script
+├── PLUGINS.md                # Plugin system documentation
 ├── DEPLOYMENT_GUIDE.md       # Publication guide
 ├── PACKAGE_SUMMARY.md        # Complete overview
 └── CLAUDE.md                 # Development context
 ```
+
+## 🔌 Plugin System - Plug-and-Play SDK
+
+PyHeart features a comprehensive plugin architecture that enables **zero-friction integration** for healthcare organizations. Pre-built plugins are available for:
+
+### For Insurance Companies 🏥💼
+- **Claims Processing**: Automated validation and submission
+- **Eligibility Verification**: Real-time benefit checks
+- **Prior Authorization**: Streamlined authorization workflows
+- **Provider Networks**: Network directory management
+
+### For Government Offices 🏛️
+- **Public Health Reporting**: Automated notifiable disease reporting
+- **Registry Management**: Immunization and quality registries
+- **CMS Integration**: Quality measures and Medicare/Medicaid
+- **Compliance**: Built-in regulatory compliance
+
+### For Healthcare Providers 🏥
+- **EHR Integration**: Connect to Epic, Cerner, Allscripts, etc.
+- **Patient Engagement**: Automated reminders and follow-ups
+- **Care Coordination**: Referral management and team collaboration
+- **Clinical Workflows**: Pre-built clinical process automation
+
+**Quick Example:**
+```python
+from pyheart import PluginManager, InsuranceAdapter
+
+# Load and use insurance plugin in 5 lines
+plugin_manager = PluginManager()
+insurance = InsuranceAdapter(config={"system_id": "acme", "api_key": "key"})
+plugin_manager.registry.register_plugin("insurance", insurance)
+await plugin_manager.start()
+await insurance.send_data("Claim", claim_data)  # Submit claim!
+```
+
+📖 **[Get Started in 5 Minutes →](QUICKSTART_PLUGINS.md)** | [Full Documentation →](PLUGINS.md) | [Examples →](examples/plugins/)
 
 ## 🛠️ Development
 

@@ -131,6 +131,16 @@ hl7v2 = "pyheart.adapters.hl7:HL7v2Adapter"
 dicom = "pyheart.adapters.dicom:DICOMAdapter"
 x12 = "pyheart.adapters.x12:X12Adapter"
 
+[project.entry-points."pyheart.plugins"]
+insurance = "pyheart.plugins.insurance:InsuranceAdapter"
+government = "pyheart.plugins.government:GovernmentAdapter"
+provider = "pyheart.plugins.provider:ProviderAdapter"
+claims_automation = "pyheart.plugins.insurance:ClaimsAutomationPlugin"
+public_health_reporting = "pyheart.plugins.government:PublicHealthReportingPlugin"
+immunization_registry = "pyheart.plugins.government:ImmunizationRegistryPlugin"
+care_coordination = "pyheart.plugins.provider:CareCoordinationPlugin"
+patient_engagement = "pyheart.plugins.provider:PatientEngagementPlugin"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 packages = {find = {where = ["src"], include = ["pyheart*"]}}
