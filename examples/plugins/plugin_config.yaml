@@ -1,0 +1,139 @@
+# PyHeart Plugin Configuration Example
+#
+# This configuration file demonstrates how to configure plugins
+# for different healthcare organizations
+
+plugins:
+  # Insurance Company Plugin
+  acme_insurance:
+    class: "pyheart.plugins.insurance.InsuranceAdapter"
+    enabled: true
+    priority: 100
+    config:
+      system_id: "acme_insurance"
+      base_url: "https://api.acmeinsurance.com"
+      api_key: "${INSURANCE_API_KEY}"  # Use environment variable
+      payer_id: "ACME-001"
+      timeout: 30
+      
+  # Government Public Health Plugin
+  state_public_health:
+    class: "pyheart.plugins.government.GovernmentAdapter"
+    enabled: true
+    priority: 90
+    config:
+      system_id: "state_public_health"
+      agency_type: "public_health"
+      base_url: "https://api.statepublichealth.gov"
+      jurisdiction: "CA"
+      reporting_format: "fhir"
+      api_key: "${PUBLIC_HEALTH_API_KEY}"
+      
+  # Medicare/CMS Integration
+  cms_medicare:
+    class: "pyheart.plugins.government.GovernmentAdapter"
+    enabled: true
+    priority: 95
+    config:
+      system_id: "cms_medicare"
+      agency_type: "medicare"
+      base_url: "https://api.cms.gov/fhir"
+      jurisdiction: "US"
+      reporting_format: "fhir"
+      
+  # Healthcare Provider - Epic EHR
+  epic_ehr:
+    class: "pyheart.plugins.provider.ProviderAdapter"
+    enabled: true
+    priority: 100
+    config:
+      system_id: "epic_ehr"
+      ehr_type: "epic"
+      base_url: "https://fhir.epic.com/interconnect-fhir-oauth"
+      client_id: "${EPIC_CLIENT_ID}"
+      client_secret: "${EPIC_CLIENT_SECRET}"
+      practice_id: "PRAC-001"
+      
+  # Healthcare Provider - Cerner EHR
+  cerner_ehr:
+    class: "pyheart.plugins.provider.ProviderAdapter"
+    enabled: false  # Disabled by default
+    priority: 100
+    config:
+      system_id: "cerner_ehr"
+      ehr_type: "cerner"
+      base_url: "https://fhir.cerner.com"
+      client_id: "${CERNER_CLIENT_ID}"
+      client_secret: "${CERNER_CLIENT_SECRET}"
+      
+  # Workflow Plugins
+  claims_automation:
+    class: "pyheart.plugins.insurance.ClaimsAutomationPlugin"
+    enabled: true
+    priority: 50
+    config:
+      auto_validate: true
+      duplicate_check: true
+      auto_retry: true
+      max_retries: 3
+      
+  public_health_reporting:
+    class: "pyheart.plugins.government.PublicHealthReportingPlugin"
+    enabled: true
+    priority: 50
+    config:
+      jurisdiction: "CA"
+      auto_submit: true
+      reportable_conditions:
+        - "COVID-19"
+        - "Tuberculosis"
+        - "Measles"
+        - "Hepatitis"
+        - "HIV"
+        - "Influenza"
+        
+  immunization_registry:
+    class: "pyheart.plugins.government.ImmunizationRegistryPlugin"
+    enabled: true
+    priority: 50
+    config:
+      auto_submit: true
+      forecast_enabled: true
+      
+  care_coordination:
+    class: "pyheart.plugins.provider.CareCoordinationPlugin"
+    enabled: true
+    priority: 50
+    config:
+      auto_referral: false
+      notification_enabled: true
+      
+  patient_engagement:
+    class: "pyheart.plugins.provider.PatientEngagementPlugin"
+    enabled: true
+    priority: 50
+    config:
+      reminder_days_before: 2
+      sms_enabled: true
+      email_enabled: true
+      adherence_tracking: true
+
+# Global plugin settings
+plugin_settings:
+  auto_discover: true
+  discover_packages:
+    - "pyheart.plugins"
+    - "custom_plugins"
+  enable_hooks: true
+  log_level: "INFO"
+  
+# Security settings for plugins
+security:
+  require_authentication: true
+  validate_signatures: true
+  sandbox_mode: false
+  allowed_operations:
+    - "read"
+    - "write"
+    - "connect"
+    - "disconnect"
