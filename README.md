@@ -97,7 +97,7 @@ await insurance.send_data("Claim", claim_data)
 await government.send_data("PublicHealthCase", report_data)
 ```
 
-**📖 See [PLUGINS.md](PLUGINS.md) for complete plugin documentation and examples.**
+**📖 See [QUICKSTART_PLUGINS.md](QUICKSTART_PLUGINS.md) for 5-minute quickstart or [PLUGINS.md](PLUGINS.md) for complete documentation.**
 
 ## 🏗️ Architecture
 
@@ -200,7 +200,7 @@ await plugin_manager.start()
 await insurance.send_data("Claim", claim_data)  # Submit claim!
 ```
 
-📖 **See [PLUGINS.md](PLUGINS.md) and [examples/plugins/](examples/plugins/) for detailed documentation and examples.**
+📖 **[Get Started in 5 Minutes →](QUICKSTART_PLUGINS.md)** | [Full Documentation →](PLUGINS.md) | [Examples →](examples/plugins/)
 
 ## 🛠️ Development
 
