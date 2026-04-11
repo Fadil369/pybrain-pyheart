@@ -239,7 +239,7 @@ PyHeart supports several plugin types:
 
 For questions or issues:
 - GitHub Issues: https://github.com/Fadil369/pybrain-pyheart/issues
-- Documentation: https://pyheart.readthedocs.io
+- Documentation: https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg#readme
 - Email: healthcare@brainsait.com
 
 ## 📄 License

@@ -378,7 +378,7 @@ if plugin.initialized:
 
 ## 🆘 Getting Help
 
-- **Documentation**: https://pyheart.readthedocs.io
+- **Documentation**: https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg#readme
 - **Examples**: `examples/plugins/` directory
 - **GitHub Issues**: https://github.com/Fadil369/pybrain-pyheart/issues
 - **Email**: healthcare@brainsait.com

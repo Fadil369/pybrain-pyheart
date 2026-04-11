@@ -120,11 +120,11 @@ legacy = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/brainsait/pyheart"
-Documentation = "https://pyheart.readthedocs.io"
-Repository = "https://github.com/brainsait/pyheart"
-Issues = "https://github.com/brainsait/pyheart/issues"
-Changelog = "https://github.com/brainsait/pyheart/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Fadil369/pybrain-pyheart"
+Documentation = "https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg#readme"
+Repository = "https://github.com/Fadil369/pybrain-pyheart"
+Issues = "https://github.com/Fadil369/pybrain-pyheart/issues"
+Changelog = "https://github.com/Fadil369/pybrain-pyheart/blob/main/CHANGELOG.md"
 
 [project.scripts]
 pyheart = "pyheart.cli:main"
@@ -1319,7 +1319,7 @@ if __name__ == '__main__':
 
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
-[![Documentation](https://img.shields.io/badge/docs-readthedocs-brightgreen.svg)](https://pyheart.readthedocs.io)
+[![Documentation](https://img.shields.io/badge/docs-readthedocs-brightgreen.svg)](https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg#readme)
 [![PyPI](https://img.shields.io/pypi/v/pyheart.svg)](https://pypi.org/project/pyheart/)
 
 PyHeart is the integration layer of the BrainSAIT Healthcare Unification Platform, providing universal healthcare system connectivity, workflow orchestration, and secure data exchange.
@@ -1605,13 +1605,13 @@ await processor.start("kafka://localhost:9092/hl7-messages")
 
 ## 📚 Documentation
 
-Full documentation is available at [https://pyheart.readthedocs.io](https://pyheart.readthedocs.io)
+Full documentation is available at [https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg#readme](https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg#readme)
 
 ### Quick Links
-- [API Reference](https://pyheart.readthedocs.io/api)
-- [Workflow Guide](https://pyheart.readthedocs.io/workflows)
-- [Integration Patterns](https://pyheart.readthedocs.io/patterns)
-- [Security Best Practices](https://pyheart.readthedocs.io/security)
+- [API Reference](https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg#api-reference)
+- [Workflow Guide](https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg#workflow-engine)
+- [Integration Patterns](https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg#integration-patterns)
+- [Security Best Practices](https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg#security)
 
 ## 🧪 Testing
 
@@ -1663,7 +1663,7 @@ spec:
     spec:
       containers:
       - name: pyheart
-        image: brainsait/pyheart:latest
+        image: ghcr.io/fadil369/pybrain-pyheart/pyheart:latest
         ports:
         - containerPort: 8000
         env:
@@ -1681,7 +1681,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ```bash
 # Clone repository
-git clone https://github.com/brainsait/pyheart.git
+git clone https://github.com/Fadil369/pybrain-pyheart.git
 cd pyheart
 
 # Create virtual environment
@@ -1710,7 +1710,7 @@ Special thanks to:
 
 ## 🔗 Related Projects
 
-- [PyBrain](https://github.com/brainsait/pybrain) - AI-powered healthcare intelligence
+- [PyBrain](https://github.com/Fadil369/pybrain-pyheart) - AI-powered healthcare intelligence
 - [BrainSAIT Platform](https://github.com/brainsait/platform) - Complete healthcare unification solution
 
 ---

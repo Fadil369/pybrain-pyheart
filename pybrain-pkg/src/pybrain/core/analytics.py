@@ -3,7 +3,7 @@ Analytics Engine for population health and predictive analytics
 """
 
 from typing import Any, Dict, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import numpy as np
 from pydantic import BaseModel
 import logging
@@ -200,10 +200,10 @@ class AnalyticsEngine:
             if birth_date:
                 try:
                     birth_year = int(birth_date.split("-")[0])
-                    age = datetime.now().year - birth_year
+                    age = datetime.now(timezone.utc).year - birth_year
                     total_age += age
                     age_count += 1
-                except:
+                except Exception:
                     pass
             
             # Gender distribution

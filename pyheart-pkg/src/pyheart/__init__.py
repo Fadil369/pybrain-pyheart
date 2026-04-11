@@ -5,7 +5,7 @@ Universal integration platform for seamless healthcare system connectivity,
 workflow orchestration, and secure data exchange.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "BrainSAIT Healthcare Innovation Lab"
 __email__ = "healthcare@brainsait.com"
 

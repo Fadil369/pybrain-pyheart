@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=65", "wheel", "setuptools-scm"]
+requires = ["setuptools>=65", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "brainsait-pyheart"
-version = "0.1.0"
+version = "0.2.0"
 description = "Healthcare Interoperability & Workflow Engine - Universal integration platform for healthcare systems"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -114,11 +114,11 @@ legacy = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/brainsait/pyheart"
-Documentation = "https://pyheart.readthedocs.io"
-Repository = "https://github.com/brainsait/pyheart"
-Issues = "https://github.com/brainsait/pyheart/issues"
-Changelog = "https://github.com/brainsait/pyheart/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Fadil369/pybrain-pyheart"
+Documentation = "https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg"
+Repository = "https://github.com/Fadil369/pybrain-pyheart"
+Issues = "https://github.com/Fadil369/pybrain-pyheart/issues"
+Changelog = "https://github.com/Fadil369/pybrain-pyheart/blob/main/CHANGELOG.md"
 
 [project.scripts]
 pyheart = "pyheart.cli:main"

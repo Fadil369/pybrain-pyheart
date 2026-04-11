@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Type, Callable
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
+import asyncio
 import importlib
 import pkgutil
 import inspect
@@ -131,17 +132,20 @@ class PluginRegistry:
         plugin = self.plugins[plugin_id]
         
         try:
-            # Cleanup plugin
-            import asyncio
-            asyncio.create_task(plugin.cleanup())
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                asyncio.run(plugin.cleanup())
+            else:
+                loop.create_task(plugin.cleanup())
         except Exception as e:
             logger.error("Error during plugin cleanup",
-                        plugin_id=plugin_id,
-                        error=str(e))
-        
+                         plugin_id=plugin_id,
+                         error=str(e))
+
         del self.plugins[plugin_id]
         del self.metadata[plugin_id]
-        
+
         logger.info("Plugin unregistered", plugin_id=plugin_id)
         return True
     

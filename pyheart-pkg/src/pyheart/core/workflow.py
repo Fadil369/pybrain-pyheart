@@ -3,7 +3,7 @@ Workflow Engine for healthcare process orchestration
 """
 
 from typing import Any, Dict, List, Optional, Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import asyncio
 from pydantic import BaseModel, Field
@@ -79,8 +79,8 @@ class WorkflowInstance(BaseModel):
     status: TaskStatus = TaskStatus.PENDING
     variables: Dict[str, Any] = Field(default_factory=dict)
     task_results: Dict[str, TaskResult] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class WorkflowEngine:
@@ -137,7 +137,7 @@ class WorkflowEngine:
         
         # Create instance
         instance = WorkflowInstance(
-            id=f"{process_id}_{datetime.utcnow().timestamp()}",
+            id=f"{process_id}_{datetime.now(timezone.utc).timestamp()}",
             process_id=process_id,
             variables={**process.variables, **(variables or {})}
         )
@@ -176,7 +176,7 @@ class WorkflowEngine:
                        error=str(e))
             instance.status = TaskStatus.FAILED
         finally:
-            instance.updated_at = datetime.utcnow()
+            instance.updated_at = datetime.now(timezone.utc)
     
     async def _execute_task(self, 
                           instance: WorkflowInstance,
@@ -201,7 +201,7 @@ class WorkflowEngine:
         # Execute task
         result = TaskResult(
             status=TaskStatus.RUNNING,
-            started_at=datetime.utcnow()
+            started_at=datetime.now(timezone.utc)
         )
         instance.task_results[task.id] = result
         
@@ -214,14 +214,14 @@ class WorkflowEngine:
             
             result.status = TaskStatus.COMPLETED
             result.output = output
-            result.completed_at = datetime.utcnow()
+            result.completed_at = datetime.now(timezone.utc)
         except Exception as e:
             logger.error("Task execution failed",
                        task_id=task.id,
                        error=str(e))
             result.status = TaskStatus.FAILED
             result.error = str(e)
-            result.completed_at = datetime.utcnow()
+            result.completed_at = datetime.now(timezone.utc)
         
         return result
     
@@ -316,7 +316,7 @@ class WorkflowEngine:
                    type=notification_type,
                    recipient=recipient)
         
-        return {"sent": True, "timestamp": datetime.utcnow()}
+        return {"sent": True, "timestamp": datetime.now(timezone.utc)}
     
     async def _handle_parallel(self,
                              task: Task,
