@@ -132,13 +132,12 @@ class PluginRegistry:
         plugin = self.plugins[plugin_id]
         
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                loop.create_task(plugin.cleanup())
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                asyncio.run(plugin.cleanup())
             else:
-                loop.run_until_complete(plugin.cleanup())
-        except RuntimeError:
-            pass  # No event loop – skip async cleanup
+                loop.create_task(plugin.cleanup())
         except Exception as e:
             logger.error("Error during plugin cleanup",
                          plugin_id=plugin_id,
