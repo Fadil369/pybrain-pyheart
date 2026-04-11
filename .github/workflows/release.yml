@@ -14,13 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11', '3.12']
     
     steps:
     - uses: actions/checkout@v4
     
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     
@@ -49,9 +49,9 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.12'
     
     - name: Install build dependencies
       run: |
@@ -71,13 +71,13 @@ jobs:
         python -m twine check dist/*
     
     - name: Upload PyBrain artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: pybrain-dist
         path: pybrain-pkg/dist/
     
     - name: Upload PyHeart artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: pyheart-dist
         path: pyheart-pkg/dist/
@@ -90,12 +90,12 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: dist/
     
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: |
           dist/pybrain-dist/*
@@ -107,12 +107,12 @@ jobs:
           ## 🧠❤️ PyBrain & PyHeart Release ${{ github.ref_name }}
           
           ### 📦 What's Included
-          - **PyBrain** - Healthcare AI intelligence platform
-          - **PyHeart** - Healthcare interoperability engine
+          - **brainsait-pybrain** - Healthcare AI intelligence platform
+          - **brainsait-pyheart** - Healthcare interoperability engine
           
           ### 🚀 Installation
           ```bash
-          pip install pybrain==${{ github.ref_name }} pyheart==${{ github.ref_name }}
+          pip install brainsait-pybrain==${{ github.ref_name }} brainsait-pyheart==${{ github.ref_name }}
           ```
           
           ### 📋 Changes
@@ -130,9 +130,9 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.12'
     
     - name: Install dependencies
       run: |
@@ -148,12 +148,10 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         packages-dir: pybrain-pkg/dist/
-        password: ${{ secrets.PYPI_API_TOKEN }}
         skip-existing: true
     
     - name: Publish PyHeart to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         packages-dir: pyheart-pkg/dist/
-        password: ${{ secrets.PYPI_API_TOKEN }}
         skip-existing: true

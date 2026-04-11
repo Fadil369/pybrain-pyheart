@@ -179,7 +179,7 @@ if risk_score > 0.8:
 
 ## 📚 Documentation
 
-Full documentation available at: https://pybrain.readthedocs.io
+Full documentation available at: https://github.com/Fadil369/pybrain-pyheart/tree/main/pybrain-pkg#readme
 
 ## 🧪 Testing
 

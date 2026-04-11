@@ -1069,17 +1069,17 @@ system.ai_engine.register_model("custom", custom_model)
 
 ## 📚 Learn More
 
-- [PyBrain Documentation](https://pybrain.readthedocs.io)
-- [PyHeart Documentation](https://pyheart.readthedocs.io)
+- [PyBrain Documentation](https://github.com/Fadil369/pybrain-pyheart/tree/main/pybrain-pkg#readme)
+- [PyHeart Documentation](https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg#readme)
 - [FHIR Resources](https://www.hl7.org/fhir/)
-- [Healthcare Workflows Best Practices](https://brainsait.com/resources)
+- [Healthcare Workflows Best Practices](https://github.com/Fadil369/pybrain-pyheart/wiki)
 
 ## 🤝 Support
 
 For questions or support:
 - Email: healthcare@brainsait.com
 - GitHub: https://github.com/brainsait
-- Community: https://community.brainsait.com
+- Community: https://github.com/Fadil369/pybrain-pyheart/discussions
 
 ---
 

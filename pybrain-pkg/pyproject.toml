@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=65", "wheel", "setuptools-scm"]
+requires = ["setuptools>=65", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "brainsait-pybrain"
-version = "0.1.0"
+version = "0.2.0"
 description = "Unified Healthcare Intelligence Platform - AI-powered healthcare data harmonization and decision support"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -63,7 +63,7 @@ dependencies = [
     "orjson>=3.9.0",
     "python-dateutil>=2.8.2",
     "pytz>=2023.3",
-    "langchain>=0.0.200",
+    "langchain>=0.2.0",
     "chromadb>=0.4.0",
     "sentence-transformers>=2.2.2",
 ]
@@ -109,11 +109,11 @@ cloud = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/brainsait/pybrain"
-Documentation = "https://pybrain.readthedocs.io"
-Repository = "https://github.com/brainsait/pybrain"
-Issues = "https://github.com/brainsait/pybrain/issues"
-Changelog = "https://github.com/brainsait/pybrain/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Fadil369/pybrain-pyheart"
+Documentation = "https://github.com/Fadil369/pybrain-pyheart/tree/main/pybrain-pkg"
+Repository = "https://github.com/Fadil369/pybrain-pyheart"
+Issues = "https://github.com/Fadil369/pybrain-pyheart/issues"
+Changelog = "https://github.com/Fadil369/pybrain-pyheart/blob/main/CHANGELOG.md"
 
 [project.scripts]
 pybrain = "pybrain.cli:main"

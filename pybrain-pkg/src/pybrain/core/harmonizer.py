@@ -3,7 +3,7 @@ Data Harmonization Engine - Transform healthcare data to unified formats
 """
 
 from typing import Any, Dict, List, Optional, Union
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from pydantic import BaseModel, Field
 import logging
@@ -82,10 +82,10 @@ class DataHarmonizer:
             elif resource_type == "MedicationRequest":
                 return self._harmonize_medication(data, source_format)
             else:
-                logger.error(f"Unsupported resource type: {resource_type}")
+                logger.error("Unsupported resource type: %s", resource_type)
                 return None
         except Exception as e:
-            logger.error(f"Harmonization failed: {e}")
+            logger.error("Harmonization failed: %s", e)
             return None
     
     def _harmonize_patient(self, data: Dict[str, Any], source_format: str) -> Dict[str, Any]:
@@ -159,7 +159,7 @@ class DataHarmonizer:
             obs_data["subject"] = {"reference": f"Patient/{data['patient_id']}"}
         
         # Add effective date
-        obs_data["effectiveDateTime"] = data.get("date", datetime.utcnow().isoformat())
+        obs_data["effectiveDateTime"] = data.get("date", datetime.now(timezone.utc).isoformat())
         
         return obs_data
     
@@ -204,7 +204,7 @@ class DataHarmonizer:
                 day = date_str[6:8]
                 return f"{year}-{month}-{day}"
             return date_str
-        except:
+        except Exception:
             return ""
     
     def add_custom_mapping(self, 
@@ -214,7 +214,7 @@ class DataHarmonizer:
         """Add custom mapping rules"""
         key = f"{source_format}_{resource_type.lower()}"
         self.mapping_rules[key] = rules
-        logger.info(f"Added {len(rules)} mapping rules for {key}")
+        logger.info("Added %d mapping rules for %s", len(rules), key)
 
 
 class FHIRMapper:

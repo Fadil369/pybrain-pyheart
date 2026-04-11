@@ -3,9 +3,10 @@ Security and compliance management for healthcare systems
 """
 
 from typing import Any, Dict, List, Optional
-from datetime import datetime, timedelta
-import hashlib
+from datetime import datetime, timedelta, timezone
+import os
 import secrets
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from pydantic import BaseModel
 import structlog
 
@@ -23,54 +24,54 @@ class AuthProvider:
         """Authenticate user and return token"""
         username = credentials.get("username")
         password = credentials.get("password")
-        
+
         if not username or not password:
             return None
-        
+
         # Simplified authentication - in production would validate against secure store
         if self._validate_credentials(username, password):
             token = self._generate_token(username)
             return token
-        
+
         return None
-    
+
     def _validate_credentials(self, username: str, password: str) -> bool:
-        """Validate user credentials"""
-        # Simplified validation - in production would use secure password verification
-        return len(username) > 0 and len(password) >= 8
-    
+        """Validate user credentials (placeholder - replace with real store lookup)"""
+        return bool(username) and len(password) >= 8
+
     def _generate_token(self, username: str) -> str:
         """Generate authentication token"""
+        now = datetime.now(timezone.utc)
         token = secrets.token_urlsafe(32)
         self.tokens[token] = {
             "username": username,
-            "issued_at": datetime.utcnow(),
-            "expires_at": datetime.utcnow() + timedelta(hours=24),
-            "scopes": ["patient.read", "observation.read", "patient.write"]
+            "issued_at": now,
+            "expires_at": now + timedelta(hours=24),
+            "scopes": ["patient.read", "observation.read", "patient.write"],
         }
         return token
-    
+
     def validate_token(self, token: str) -> Optional[Dict[str, Any]]:
         """Validate authentication token"""
         token_data = self.tokens.get(token)
         if not token_data:
             return None
-        
-        if datetime.utcnow() > token_data["expires_at"]:
+
+        if datetime.now(timezone.utc) > token_data["expires_at"]:
             del self.tokens[token]
             return None
-        
+
         return token_data
-    
+
     async def get_token(self, client_id: str, scope: str) -> str:
         """Get token for OAuth2/SMART on FHIR"""
-        # Simplified OAuth2 token generation
+        now = datetime.now(timezone.utc)
         token = secrets.token_urlsafe(32)
         self.tokens[token] = {
             "client_id": client_id,
             "scope": scope,
-            "issued_at": datetime.utcnow(),
-            "expires_at": datetime.utcnow() + timedelta(hours=1)
+            "issued_at": now,
+            "expires_at": now + timedelta(hours=1),
         }
         return token
 
@@ -84,26 +85,26 @@ class AuditLogger:
     def log_access(self, user_id: str, resource_type: str, resource_id: str, action: str):
         """Log resource access"""
         audit_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "user_id": user_id,
             "resource_type": resource_type,
             "resource_id": resource_id,
             "action": action,
             "ip_address": "127.0.0.1",  # Would get from request
-            "user_agent": "PyHeart Client"  # Would get from request
+            "user_agent": "PyHeart Client",  # Would get from request
         }
-        
+
         self.audit_logs.append(audit_entry)
         logger.info("Audit log entry", **audit_entry)
-    
+
     def log_system_event(self, event_type: str, details: Dict[str, Any]):
         """Log system events"""
         audit_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "event_type": event_type,
-            "details": details
+            "details": details,
         }
-        
+
         self.audit_logs.append(audit_entry)
         logger.info("System event logged", **audit_entry)
     
@@ -127,49 +128,48 @@ class AuditLogger:
 
 
 class EncryptionManager:
-    """Data encryption management"""
-    
+    """Data encryption management using AES-256-GCM"""
+
     def __init__(self, algorithm: str = "AES-256-GCM"):
         self.algorithm = algorithm
-        self.keys: Dict[str, str] = {}
-        self._generate_master_key()
-    
-    def _generate_master_key(self):
-        """Generate master encryption key"""
-        self.master_key = secrets.token_bytes(32)  # 256-bit key
-        logger.info("Generated master encryption key")
-    
+        self._master_key: bytes = os.urandom(32)  # 256-bit key
+        self._aesgcm = AESGCM(self._master_key)
+        logger.info("EncryptionManager initialised", algorithm=algorithm)
+
     def encrypt_data(self, data: str, context: Optional[str] = None) -> Dict[str, str]:
-        """Encrypt sensitive data"""
-        # Simplified encryption - in production would use proper cryptographic library
-        encrypted = hashlib.sha256(data.encode()).hexdigest()
-        
-        encryption_info = {
-            "encrypted_data": encrypted,
+        """Encrypt sensitive data using AES-256-GCM."""
+        nonce = os.urandom(12)  # 96-bit nonce
+        aad = context.encode() if context else b""
+        ciphertext = self._aesgcm.encrypt(nonce, data.encode(), aad or None)
+
+        return {
+            "encrypted_data": (nonce + ciphertext).hex(),
             "algorithm": self.algorithm,
             "context": context or "default",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
-        
-        return encryption_info
-    
+
     def decrypt_data(self, encrypted_info: Dict[str, str]) -> str:
-        """Decrypt sensitive data"""
-        # Simplified decryption - in production would use proper decryption
-        logger.info("Decrypting data", context=encrypted_info.get("context"))
-        return "decrypted_data"  # Placeholder
-    
+        """Decrypt data previously encrypted with encrypt_data."""
+        raw = bytes.fromhex(encrypted_info["encrypted_data"])
+        nonce, ciphertext = raw[:12], raw[12:]
+        context = encrypted_info.get("context", "default")
+        aad = context.encode() if context and context != "default" else None
+        plaintext = self._aesgcm.decrypt(nonce, ciphertext, aad)
+        logger.info("Data decrypted", context=context)
+        return plaintext.decode()
+
     def encrypt_pii(self, patient_data: Dict[str, Any]) -> Dict[str, Any]:
         """Encrypt personally identifiable information"""
         encrypted_data = patient_data.copy()
-        
+
         # Fields to encrypt
         pii_fields = ["name", "address", "phone", "email", "ssn"]
-        
+
         for field in pii_fields:
             if field in encrypted_data:
                 encrypted_data[field] = self.encrypt_data(str(encrypted_data[field]), field)
-        
+
         return encrypted_data
 
 
@@ -282,10 +282,10 @@ class SecurityManager:
     def generate_compliance_report(self) -> Dict[str, Any]:
         """Generate compliance report"""
         return {
-            "report_date": datetime.utcnow().isoformat(),
+            "report_date": datetime.now(timezone.utc).isoformat(),
             "audit_entries": len(self.audit_logger.audit_logs),
             "encryption_enabled": True,
             "compliance_standards": list(self.compliance_rules.keys()),
             "active_tokens": len(self.auth_provider.tokens),
-            "violations": []  # Would track actual violations
+            "violations": [],  # Would track actual violations
         }

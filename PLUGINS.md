@@ -496,7 +496,7 @@ async def test_custom_plugin():
 ## 📚 Additional Resources
 
 - **Examples**: See `examples/plugins/` for complete working examples
-- **API Documentation**: Full API reference at https://pyheart.readthedocs.io
+- **API Documentation**: Full API reference at https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg#readme
 - **GitHub**: https://github.com/Fadil369/pybrain-pyheart
 - **Support**: healthcare@brainsait.com
 

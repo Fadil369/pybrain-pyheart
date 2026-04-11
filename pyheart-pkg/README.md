@@ -250,7 +250,7 @@ unified_patient = await client.get_unified_patient("12345")
 
 ## 📚 Documentation
 
-Full documentation available at: https://pyheart.readthedocs.io
+Full documentation available at: https://github.com/Fadil369/pybrain-pyheart/tree/main/pyheart-pkg#readme
 
 ### Quick Links
 - API Reference
@@ -275,7 +275,7 @@ pytest tests/integration --integration
 
 ### Docker
 ```bash
-docker run -p 8000:8000 brainsait/pyheart:latest
+docker run -p 8000:8000 ghcr.io/fadil369/pybrain-pyheart/pyheart:latest
 ```
 
 ### Kubernetes
@@ -293,7 +293,7 @@ spec:
     spec:
       containers:
       - name: pyheart
-        image: brainsait/pyheart:latest
+        image: ghcr.io/fadil369/pybrain-pyheart/pyheart:latest
         ports:
         - containerPort: 8000
 ```

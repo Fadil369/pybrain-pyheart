@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-11
+
+### Added - PyHeart Plugin System
+- **Plugin Architecture**: Full plug-and-play SDK with `Plugin`, `PluginManager`, `PluginRegistry`, and `PluginType` abstractions
+- **Insurance Plugin**: `InsuranceAdapter` and `ClaimsAutomationPlugin` for claims processing, prior authorization, and eligibility verification
+- **Government Plugin**: `GovernmentAdapter`, `PublicHealthReportingPlugin`, and `ImmunizationRegistryPlugin` for regulatory reporting
+- **Provider Plugin**: `ProviderAdapter`, `CareCoordinationPlugin`, and `PatientEngagementPlugin` for EHR connectivity
+- **Plugin Discovery**: Automatic plugin discovery from packages via `PluginRegistry.discover_plugins()`
+- **Hook System**: Event-driven hooks with `register_hook` / `trigger_hook` for plugin-to-plugin communication
+- **Plugin Documentation**: `PLUGINS.md`, `PLUGIN_ARCHITECTURE.md`, `QUICKSTART_PLUGINS.md`, and example scripts
+
+### Fixed
+- **Security (Critical)**: Replaced fake SHA-256 "encryption" in `EncryptionManager.encrypt_data()` with real AES-256-GCM via the `cryptography` library; `decrypt_data()` now correctly reverses the encryption
+- **Bug**: `FHIRClient.close()` no longer calls `asyncio.create_task()` outside an async context (was a `RuntimeError`)
+- **Bug**: `PluginRegistry.unregister_plugin()` no longer calls `asyncio.create_task()` outside an async context
+- **Deprecation**: Replaced `datetime.utcnow()` (deprecated in Python 3.12) with `datetime.now(timezone.utc)` across all modules
+- **Code Quality**: Replaced bare `except:` clauses with `except Exception:` in `harmonizer.py` and `analytics.py`
+- **Code Quality**: Replaced f-string log calls with `%`-style parameterized logging in `harmonizer.py`
+- **Import Order**: Moved `import logging` to the top of `pybrain/__init__.py`
+
+### Changed
+- **pyproject.toml (both)**: Updated GitHub URLs to `Fadil369/pybrain-pyheart`
+- **pyproject.toml (both)**: Removed unused `setuptools-scm` from build requirements
+- **pyproject.toml (pybrain)**: Updated `langchain` minimum version `>=0.0.200` → `>=0.2.0`
+- **pyproject.toml (both)**: Added Python 3.12 classifier; build matrix updated to 3.9–3.12
+- **release.yml**: Updated `actions/setup-python` `@v4` → `@v5`
+- **release.yml**: Updated `actions/upload-artifact` / `download-artifact` `@v3` → `@v4`
+- **release.yml**: Updated `softprops/action-gh-release` `@v1` → `@v2`
+- **release.yml**: Fixed pip install command in release body (`pybrain` → `brainsait-pybrain`, `pyheart` → `brainsait-pyheart`)
+- **release.yml**: Removed hardcoded `PYPI_API_TOKEN` from publish steps in favour of OIDC trusted publisher
+
 ## [0.1.0] - 2024-08-02
 
 ### Added - PyBrain (Intelligence Layer)
@@ -40,4 +71,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Role-based access controls
 - Patient consent management
 
+[0.2.0]: https://github.com/Fadil369/pybrain-pyheart/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Fadil369/pybrain-pyheart/releases/tag/v0.1.0

@@ -116,11 +116,11 @@ cloud = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/brainsait/pybrain"
-Documentation = "https://pybrain.readthedocs.io"
-Repository = "https://github.com/brainsait/pybrain"
-Issues = "https://github.com/brainsait/pybrain/issues"
-Changelog = "https://github.com/brainsait/pybrain/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Fadil369/pybrain-pyheart"
+Documentation = "https://github.com/Fadil369/pybrain-pyheart/tree/main/pybrain-pkg#readme"
+Repository = "https://github.com/Fadil369/pybrain-pyheart"
+Issues = "https://github.com/Fadil369/pybrain-pyheart/issues"
+Changelog = "https://github.com/Fadil369/pybrain-pyheart/blob/main/CHANGELOG.md"
 
 [project.scripts]
 pybrain = "pybrain.cli:main"
@@ -804,7 +804,7 @@ if __name__ == '__main__':
 
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
-[![Documentation](https://img.shields.io/badge/docs-readthedocs-brightgreen.svg)](https://pybrain.readthedocs.io)
+[![Documentation](https://img.shields.io/badge/docs-readthedocs-brightgreen.svg)](https://github.com/Fadil369/pybrain-pyheart/tree/main/pybrain-pkg#readme)
 [![PyPI](https://img.shields.io/pypi/v/pybrain.svg)](https://pypi.org/project/pybrain/)
 
 PyBrain is the intelligence layer of the BrainSAIT Healthcare Unification Platform, providing AI-powered data harmonization, clinical NLP, and decision support for building next-generation healthcare systems.
@@ -909,7 +909,7 @@ risk_score = ai.predict_risk_score(patient_data)
 
 ## 📚 Documentation
 
-Full documentation is available at [https://pybrain.readthedocs.io](https://pybrain.readthedocs.io)
+Full documentation is available at [https://github.com/Fadil369/pybrain-pyheart/tree/main/pybrain-pkg#readme](https://github.com/Fadil369/pybrain-pyheart/tree/main/pybrain-pkg#readme)
 
 ## 🧪 Testing
 

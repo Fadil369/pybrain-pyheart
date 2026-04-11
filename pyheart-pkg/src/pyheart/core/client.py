@@ -3,7 +3,7 @@ FHIR Client for PyHeart - Universal healthcare data access
 """
 
 from typing import Any, Dict, List, Optional, Union
-from datetime import datetime
+from datetime import datetime, timezone
 import httpx
 import asyncio
 from pydantic import BaseModel, Field, HttpUrl
@@ -272,8 +272,16 @@ class FHIRClient:
     def close(self):
         """Close HTTP clients"""
         self._client.close()
-        if hasattr(self, '_async_client'):
-            asyncio.create_task(self._async_client.aclose())
+        # AsyncClient must be closed from an async context; schedule for later if needed.
+        if hasattr(self, "_async_client") and not self._async_client.is_closed:
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(self._async_client.aclose())
+                else:
+                    loop.run_until_complete(self._async_client.aclose())
+            except RuntimeError:
+                pass  # No event loop available; connection will be GC'd
     
     async def __aenter__(self):
         return self

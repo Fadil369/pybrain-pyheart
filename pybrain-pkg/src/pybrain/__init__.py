@@ -5,15 +5,17 @@ AI-powered healthcare data harmonization, clinical NLP, and decision support
 for building the next generation of intelligent healthcare systems.
 """
 
-__version__ = "0.1.0"
-__author__ = "BrainSAIT Healthcare Innovation Lab"
-__email__ = "healthcare@brainsait.com"
+import logging
 
 from pybrain.core.ai import AIEngine, ModelRegistry
 from pybrain.core.analytics import AnalyticsEngine, HealthMetrics
 from pybrain.core.decision import DecisionEngine, ClinicalRules
 from pybrain.core.harmonizer import DataHarmonizer, FHIRMapper
 from pybrain.core.knowledge import KnowledgeGraph, MedicalOntology
+
+__version__ = "0.2.0"
+__author__ = "BrainSAIT Healthcare Innovation Lab"
+__email__ = "healthcare@brainsait.com"
 
 __all__ = [
     "AIEngine",
@@ -27,8 +29,5 @@ __all__ = [
     "KnowledgeGraph",
     "MedicalOntology",
 ]
-
-# Configure logging
-import logging
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
