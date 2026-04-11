@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 import os
 import secrets
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.exceptions import InvalidTag
 from pydantic import BaseModel
 import structlog
 
@@ -128,11 +129,37 @@ class AuditLogger:
 
 
 class EncryptionManager:
-    """Data encryption management using AES-256-GCM"""
+    """Data encryption management using AES-256-GCM.
 
-    def __init__(self, algorithm: str = "AES-256-GCM"):
+    A caller-supplied *key* (32 raw bytes) takes highest precedence.
+    If none is provided the ``PYHEART_ENCRYPTION_KEY`` environment variable
+    (hex-encoded 32-byte value) is tried next.  When neither is present a
+    fresh random key is generated — suitable for single-process use only.
+    """
+
+    def __init__(self, algorithm: str = "AES-256-GCM", key: Optional[bytes] = None):
         self.algorithm = algorithm
-        self._master_key: bytes = os.urandom(32)  # 256-bit key
+
+        if key is not None:
+            if len(key) != 32:
+                raise ValueError("Encryption key must be exactly 32 bytes (256 bits)")
+            self._master_key = key
+        else:
+            env_key = os.environ.get("PYHEART_ENCRYPTION_KEY")
+            if env_key:
+                raw = bytes.fromhex(env_key)
+                if len(raw) != 32:
+                    raise ValueError(
+                        "PYHEART_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)"
+                    )
+                self._master_key = raw
+            else:
+                self._master_key = os.urandom(32)  # ephemeral key – single-process only
+                logger.warning(
+                    "EncryptionManager using a random ephemeral key. "
+                    "Set PYHEART_ENCRYPTION_KEY env var for persistent encryption."
+                )
+
         self._aesgcm = AESGCM(self._master_key)
         logger.info("EncryptionManager initialised", algorithm=algorithm)
 
@@ -150,12 +177,40 @@ class EncryptionManager:
         }
 
     def decrypt_data(self, encrypted_info: Dict[str, str]) -> str:
-        """Decrypt data previously encrypted with encrypt_data."""
-        raw = bytes.fromhex(encrypted_info["encrypted_data"])
+        """Decrypt data previously encrypted with encrypt_data.
+
+        Raises:
+            KeyError: if required keys are missing from *encrypted_info*.
+            ValueError: if the payload is too short or the algorithm tag doesn't match.
+            cryptography.exceptions.InvalidTag: if the ciphertext has been tampered with.
+        """
+        if "encrypted_data" not in encrypted_info:
+            raise KeyError("encrypted_info must contain 'encrypted_data'")
+
+        stored_algorithm = encrypted_info.get("algorithm", "")
+        if stored_algorithm and stored_algorithm != self.algorithm:
+            raise ValueError(
+                f"Algorithm mismatch: stored '{stored_algorithm}', "
+                f"expected '{self.algorithm}'"
+            )
+
+        try:
+            raw = bytes.fromhex(encrypted_info["encrypted_data"])
+        except ValueError as exc:
+            raise ValueError("'encrypted_data' is not valid hex") from exc
+
+        if len(raw) < 13:  # 12-byte nonce + at least 1 byte ciphertext
+            raise ValueError("'encrypted_data' payload is too short to be valid")
+
         nonce, ciphertext = raw[:12], raw[12:]
         context = encrypted_info.get("context", "")
         aad = context.encode() if context else b""
-        plaintext = self._aesgcm.decrypt(nonce, ciphertext, aad)
+
+        try:
+            plaintext = self._aesgcm.decrypt(nonce, ciphertext, aad)
+        except InvalidTag as exc:
+            raise InvalidTag("Decryption failed: ciphertext may be tampered or key mismatch") from exc
+
         logger.info("Data decrypted", context=context)
         return plaintext.decode()
 

@@ -1078,7 +1078,7 @@ system.ai_engine.register_model("custom", custom_model)
 
 For questions or support:
 - Email: healthcare@brainsait.com
-- GitHub: https://github.com/brainsait
+- GitHub: https://github.com/Fadil369
 - Community: https://github.com/Fadil369/pybrain-pyheart/discussions
 
 ---
