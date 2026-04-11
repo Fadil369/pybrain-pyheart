@@ -209,7 +209,7 @@ class EncryptionManager:
         try:
             plaintext = self._aesgcm.decrypt(nonce, ciphertext, aad)
         except InvalidTag as exc:
-            raise InvalidTag("Decryption failed: ciphertext may be tampered or key mismatch") from exc
+            raise InvalidTag("Decryption failed: ciphertext may be tampered with or key mismatch detected") from exc
 
         logger.info("Data decrypted", context=context)
         return plaintext.decode()
