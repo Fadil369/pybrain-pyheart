@@ -140,12 +140,12 @@ class EncryptionManager:
         """Encrypt sensitive data using AES-256-GCM."""
         nonce = os.urandom(12)  # 96-bit nonce
         aad = context.encode() if context else b""
-        ciphertext = self._aesgcm.encrypt(nonce, data.encode(), aad or None)
+        ciphertext = self._aesgcm.encrypt(nonce, data.encode(), aad)
 
         return {
             "encrypted_data": (nonce + ciphertext).hex(),
             "algorithm": self.algorithm,
-            "context": context or "default",
+            "context": context or "",
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -153,8 +153,8 @@ class EncryptionManager:
         """Decrypt data previously encrypted with encrypt_data."""
         raw = bytes.fromhex(encrypted_info["encrypted_data"])
         nonce, ciphertext = raw[:12], raw[12:]
-        context = encrypted_info.get("context", "default")
-        aad = context.encode() if context and context != "default" else None
+        context = encrypted_info.get("context", "")
+        aad = context.encode() if context else b""
         plaintext = self._aesgcm.decrypt(nonce, ciphertext, aad)
         logger.info("Data decrypted", context=context)
         return plaintext.decode()
