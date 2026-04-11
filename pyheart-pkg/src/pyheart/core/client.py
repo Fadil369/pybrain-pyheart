@@ -272,16 +272,14 @@ class FHIRClient:
     def close(self):
         """Close HTTP clients"""
         self._client.close()
-        # AsyncClient must be closed from an async context; schedule for later if needed.
+        # Close AsyncClient deterministically when no event loop is running.
         if hasattr(self, "_async_client") and not self._async_client.is_closed:
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    loop.create_task(self._async_client.aclose())
-                else:
-                    loop.run_until_complete(self._async_client.aclose())
+                loop = asyncio.get_running_loop()
             except RuntimeError:
-                pass  # No event loop available; connection will be GC'd
+                asyncio.run(self._async_client.aclose())
+            else:
+                loop.create_task(self._async_client.aclose())
     
     async def __aenter__(self):
         return self
