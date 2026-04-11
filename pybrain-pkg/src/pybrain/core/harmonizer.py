@@ -92,40 +92,95 @@ class DataHarmonizer:
         """Harmonize patient data to FHIR Patient resource"""
         patient_data = {
             "resourceType": "Patient",
-            "active": True
+            "active": True,
+            "communication": [],
+            "extension": []
         }
         
         if source_format == "hl7v2":
             # Apply HL7v2 mappings
-            patient_data["name"] = [{
-                "family": data.get("PID", {}).get("5", {}).get("1", ""),
-                "given": [data.get("PID", {}).get("5", {}).get("2", "")]
-            }]
+            pid_data = data.get("PID", {})
+            family_name = pid_data.get("5", {}).get("1", "")
+            given_name = pid_data.get("5", {}).get("2", "")
+            arabic_name = pid_data.get("5", {}).get("8", "")
+            patient_data["name"] = self._build_human_names(family_name, given_name, arabic_name)
             
             # Parse birth date
-            if "7" in data.get("PID", {}):
-                patient_data["birthDate"] = self._parse_hl7_date(data["PID"]["7"])
+            if "7" in pid_data:
+                patient_data["birthDate"] = self._parse_hl7_date(pid_data["7"])
             
             # Map gender
             gender_map = {"M": "male", "F": "female", "O": "other"}
-            if "8" in data.get("PID", {}):
-                patient_data["gender"] = gender_map.get(data["PID"]["8"], "unknown")
+            if "8" in pid_data:
+                patient_data["gender"] = gender_map.get(pid_data["8"], "unknown")
+
+            self._add_identifier(
+                patient_data,
+                pid_data.get("3", {}).get("1"),
+                "http://brainsait.com/fhir/mrn",
+                "MRN",
+            )
+            self._add_identifier(
+                patient_data,
+                pid_data.get("18", {}).get("1"),
+                "http://brainsait.com/fhir/visit-number",
+                "Visit Number",
+            )
+
+            preferred_language = pid_data.get("15", {}).get("1") or data.get("PV1", {}).get("2")
+            self._add_language(patient_data, self._normalize_language(preferred_language))
         
         elif source_format == "csv" or source_format == "custom":
             # Direct mapping for CSV/custom data
-            patient_data["name"] = [{
-                "family": data.get("last_name", data.get("family_name", "")),
-                "given": [data.get("first_name", data.get("given_name", ""))]
-            }]
+            family_name = data.get("last_name", data.get("family_name", ""))
+            given_name = data.get("first_name", data.get("given_name", ""))
+            arabic_name = data.get("arabic_name", data.get("name_ar", ""))
+            patient_data["name"] = self._build_human_names(family_name, given_name, arabic_name)
             patient_data["birthDate"] = data.get("birth_date", data.get("birthDate", ""))
-            patient_data["gender"] = data.get("gender", "unknown")
+            patient_data["gender"] = self._normalize_gender(data.get("gender", "unknown"))
             
             # Add identifier if present
             if data.get("mrn") or data.get("id"):
-                patient_data["identifier"] = [{
-                    "system": "http://hospital.example.com/mrn",
-                    "value": data.get("mrn", data.get("id", ""))
-                }]
+                self._add_identifier(
+                    patient_data,
+                    data.get("mrn", data.get("id", "")),
+                    "http://brainsait.com/fhir/mrn",
+                    "MRN",
+                )
+            self._add_identifier(
+                patient_data,
+                data.get("national_id"),
+                "http://brainsait.com/fhir/national-id",
+                "National ID",
+            )
+            self._add_identifier(
+                patient_data,
+                data.get("iqama"),
+                "http://brainsait.com/fhir/iqama",
+                "Iqama",
+            )
+            self._add_identifier(
+                patient_data,
+                data.get("passport_number"),
+                "http://brainsait.com/fhir/passport",
+                "Passport",
+            )
+
+            self._add_language(patient_data, self._normalize_language(data.get("preferred_language")))
+            self._add_extension(
+                patient_data,
+                "https://brainsait.com/fhir/StructureDefinition/care-region",
+                "valueCode",
+                data.get("region"),
+            )
+            self._add_extension(
+                patient_data,
+                "https://brainsait.com/fhir/StructureDefinition/care-facility",
+                "valueString",
+                data.get("facility_id", data.get("facility")),
+            )
+
+        self._cleanup_patient_resource(patient_data)
         
         return patient_data
     
@@ -206,6 +261,106 @@ class DataHarmonizer:
             return date_str
         except Exception:
             return ""
+
+    def _build_human_names(
+        self,
+        family_name: str,
+        given_name: str,
+        arabic_name: str = "",
+    ) -> List[Dict[str, Any]]:
+        names: List[Dict[str, Any]] = []
+        if family_name or given_name:
+            names.append({
+                "use": "official",
+                "family": family_name,
+                "given": [value for value in [given_name] if value],
+            })
+        if arabic_name:
+            names.append({
+                "use": "usual",
+                "text": arabic_name,
+                "extension": [{
+                    "url": "http://hl7.org/fhir/StructureDefinition/language",
+                    "valueCode": "ar",
+                }],
+            })
+        return names or [{"text": "Unknown"}]
+
+    def _normalize_language(self, language: Optional[str]) -> Optional[str]:
+        if not language:
+            return None
+
+        value = str(language).strip().lower()
+        mappings = {
+            "ar": "ar",
+            "ara": "ar",
+            "arabic": "ar",
+            "en": "en",
+            "eng": "en",
+            "english": "en",
+        }
+        return mappings.get(value, value[:2])
+
+    def _normalize_gender(self, gender: str) -> str:
+        value = str(gender).strip().lower()
+        mappings = {
+            "m": "male",
+            "male": "male",
+            "f": "female",
+            "female": "female",
+            "o": "other",
+            "other": "other",
+        }
+        return mappings.get(value, "unknown")
+
+    def _add_identifier(
+        self,
+        patient_data: Dict[str, Any],
+        value: Optional[str],
+        system: str,
+        label: str,
+    ):
+        if not value:
+            return
+        patient_data.setdefault("identifier", []).append(
+            {
+                "system": system,
+                "value": value,
+                "type": {"text": label},
+            }
+        )
+
+    def _add_language(self, patient_data: Dict[str, Any], language_code: Optional[str]):
+        if not language_code:
+            return
+        patient_data["communication"].append(
+            {
+                "language": {
+                    "coding": [{
+                        "system": "urn:ietf:bcp:47",
+                        "code": language_code,
+                    }]
+                },
+                "preferred": True,
+            }
+        )
+
+    def _add_extension(
+        self,
+        patient_data: Dict[str, Any],
+        url: str,
+        value_key: str,
+        value: Optional[str],
+    ):
+        if not value:
+            return
+        patient_data["extension"].append({"url": url, value_key: value})
+
+    def _cleanup_patient_resource(self, patient_data: Dict[str, Any]):
+        if not patient_data.get("communication"):
+            patient_data.pop("communication", None)
+        if not patient_data.get("extension"):
+            patient_data.pop("extension", None)
     
     def add_custom_mapping(self, 
                           source_format: str,

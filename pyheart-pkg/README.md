@@ -2,9 +2,9 @@
 
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/pyheart.svg)](https://pypi.org/project/pyheart/)
+[![PyPI](https://img.shields.io/pypi/v/brainsait-pyheart.svg)](https://pypi.org/project/brainsait-pyheart/)
 
-PyHeart is the integration layer of the BrainSAIT Healthcare Unification Platform, providing universal healthcare system connectivity, workflow orchestration, and secure data exchange.
+PyHeart is the integration layer of the BrainSAIT Healthcare Unification Platform, providing universal healthcare system connectivity, BrainSAIT-aware workflow orchestration, and secure data exchange.
 
 ## 🚀 Features
 
@@ -17,17 +17,17 @@ PyHeart is the integration layer of the BrainSAIT Healthcare Unification Platfor
 ## 📦 Installation
 
 ```bash
-pip install pyheart
+pip install brainsait-pyheart
 ```
 
 For development:
 ```bash
-pip install pyheart[dev]
+pip install "brainsait-pyheart[dev]"
 ```
 
 For legacy system support:
 ```bash
-pip install pyheart[legacy]
+pip install "brainsait-pyheart[legacy]"
 ```
 
 ## 🔧 Quick Start

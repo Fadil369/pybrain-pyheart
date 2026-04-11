@@ -2,7 +2,7 @@
 Workflow Engine for healthcare process orchestration
 """
 
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Dict, List, Optional, Callable, Union
 from datetime import datetime, timezone
 from enum import Enum
 import asyncio
@@ -10,6 +10,9 @@ from pydantic import BaseModel, Field
 import structlog
 from dataclasses import dataclass
 import json
+import re
+
+from pyheart.core.context import BrainSAITContext
 
 logger = structlog.get_logger()
 
@@ -79,6 +82,8 @@ class WorkflowInstance(BaseModel):
     status: TaskStatus = TaskStatus.PENDING
     variables: Dict[str, Any] = Field(default_factory=dict)
     task_results: Dict[str, TaskResult] = Field(default_factory=dict)
+    brainsait_context: Optional[Dict[str, Any]] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -95,10 +100,11 @@ class WorkflowEngine:
     - Event-driven triggers
     """
     
-    def __init__(self):
+    def __init__(self, brainsait_context: Optional[Union[BrainSAITContext, Dict[str, Any]]] = None):
         self.processes: Dict[str, ProcessDefinition] = {}
         self.instances: Dict[str, WorkflowInstance] = {}
         self.task_handlers: Dict[TaskType, Callable] = {}
+        self.brainsait_context = self._coerce_context(brainsait_context)
         self._register_default_handlers()
     
     def _register_default_handlers(self):
@@ -119,7 +125,9 @@ class WorkflowEngine:
     
     async def start_process(self, 
                           process_id: str,
-                          variables: Optional[Dict[str, Any]] = None) -> str:
+                          variables: Optional[Dict[str, Any]] = None,
+                          brainsait_context: Optional[Union[BrainSAITContext, Dict[str, Any]]] = None,
+                          wait_for_completion: bool = False) -> str:
         """
         Start a new workflow instance
         
@@ -134,12 +142,25 @@ class WorkflowEngine:
             raise ValueError(f"Process {process_id} not found")
         
         process = self.processes[process_id]
+        resolved_context = self._resolve_context(process, brainsait_context)
+        resolved_variables = {**process.variables, **(variables or {})}
+        if resolved_context:
+            resolved_variables = resolved_context.enrich_variables(resolved_variables)
+
+        metadata = dict(process.metadata)
+        if resolved_context:
+            metadata["brainsait_context"] = resolved_context.model_dump(exclude_none=True)
+            metadata.setdefault("workflow_profile", resolved_context.workflow_profile)
         
         # Create instance
         instance = WorkflowInstance(
             id=f"{process_id}_{datetime.now(timezone.utc).timestamp()}",
             process_id=process_id,
-            variables={**process.variables, **(variables or {})}
+            variables=resolved_variables,
+            brainsait_context=(
+                resolved_context.model_dump(exclude_none=True) if resolved_context else None
+            ),
+            metadata=metadata
         )
         
         self.instances[instance.id] = instance
@@ -149,7 +170,10 @@ class WorkflowEngine:
                    process_id=process_id)
         
         # Start execution
-        asyncio.create_task(self._execute_instance(instance.id))
+        if wait_for_completion:
+            await self._execute_instance(instance.id)
+        else:
+            asyncio.create_task(self._execute_instance(instance.id))
         
         return instance.id
     
@@ -196,6 +220,7 @@ class WorkflowEngine:
                              dependency=dep_id)
                 result = TaskResult(status=TaskStatus.SKIPPED)
                 instance.task_results[task.id] = result
+                self._store_task_output(instance, task.id, result.output, result.status)
                 return result
         
         # Execute task
@@ -215,6 +240,7 @@ class WorkflowEngine:
             result.status = TaskStatus.COMPLETED
             result.output = output
             result.completed_at = datetime.now(timezone.utc)
+            self._store_task_output(instance, task.id, output, result.status)
         except Exception as e:
             logger.error("Task execution failed",
                        task_id=task.id,
@@ -222,6 +248,7 @@ class WorkflowEngine:
             result.status = TaskStatus.FAILED
             result.error = str(e)
             result.completed_at = datetime.now(timezone.utc)
+            self._store_task_output(instance, task.id, {"error": str(e)}, result.status)
         
         return result
     
@@ -264,6 +291,7 @@ class WorkflowEngine:
         
         # Variable substitution
         url = self._substitute_variables(url, instance.variables)
+        headers = self._substitute_variables(headers, instance.variables)
         body = self._substitute_variables(body, instance.variables)
         
         # Make API call (simplified for demo)
@@ -309,14 +337,20 @@ class WorkflowEngine:
         config = task.config
         
         notification_type = config.get("type", "email")
-        recipient = config.get("recipient", "")
-        template = config.get("template", "")
+        recipient = self._substitute_variables(config.get("recipient", ""), instance.variables)
+        template = self._substitute_variables(config.get("template", ""), instance.variables)
         
         logger.info("Sending notification",
                    type=notification_type,
                    recipient=recipient)
         
-        return {"sent": True, "timestamp": datetime.now(timezone.utc)}
+        return {
+            "sent": True,
+            "timestamp": datetime.now(timezone.utc),
+            "recipient": recipient,
+            "template": template,
+            "type": notification_type,
+        }
     
     async def _handle_parallel(self,
                              task: Task,
@@ -355,10 +389,16 @@ class WorkflowEngine:
                             variables: Dict[str, Any]) -> Any:
         """Substitute variables in template"""
         if isinstance(template, str):
-            # Simple variable substitution
-            for key, value in variables.items():
-                template = template.replace(f"${{{key}}}", str(value))
-            return template
+            exact_match = re.fullmatch(r"\$\{([^}]+)\}", template)
+            if exact_match:
+                resolved = self._resolve_variable(exact_match.group(1), variables)
+                return template if resolved is None else resolved
+
+            def replace(match: re.Match[str]) -> str:
+                resolved = self._resolve_variable(match.group(1), variables)
+                return match.group(0) if resolved is None else str(resolved)
+
+            return re.sub(r"\$\{([^}]+)\}", replace, template)
         elif isinstance(template, dict):
             return {
                 k: self._substitute_variables(v, variables)
@@ -397,7 +437,7 @@ class WorkflowEngine:
         """Get variable value from expression"""
         if expr.startswith("$"):
             var_name = expr[1:]
-            return variables.get(var_name)
+            return self._resolve_variable(var_name, variables)
         return expr
     
     async def _execute_action(self,
@@ -408,10 +448,11 @@ class WorkflowEngine:
         
         if action_type == "set_variable":
             var_name = action.get("variable", "")
-            value = action.get("value", "")
+            value = self._substitute_variables(action.get("value", ""), instance.variables)
             instance.variables[var_name] = value
         elif action_type == "notification":
-            logger.info("Action: notification", recipient=action.get("recipient"))
+            recipient = self._substitute_variables(action.get("recipient", ""), instance.variables)
+            logger.info("Action: notification", recipient=recipient)
     
     def get_instance_status(self, instance_id: str) -> Optional[WorkflowInstance]:
         """Get workflow instance status"""
@@ -425,3 +466,64 @@ class WorkflowEngine:
             logger.info("Cancelled workflow instance", instance_id=instance_id)
             return True
         return False
+
+    def _store_task_output(
+        self,
+        instance: WorkflowInstance,
+        task_id: str,
+        output: Any,
+        status: TaskStatus,
+    ):
+        """Store task results in instance variables for downstream tasks."""
+        instance.variables.setdefault("task_outputs", {})
+        instance.variables.setdefault("task_statuses", {})
+        instance.variables["task_outputs"][task_id] = output
+        instance.variables["task_statuses"][task_id] = status.value
+        instance.variables["last_task_id"] = task_id
+        instance.variables["last_task_output"] = output
+        instance.updated_at = datetime.now(timezone.utc)
+
+    def _resolve_variable(self, expr: str, variables: Dict[str, Any]) -> Any:
+        """Resolve dotted variable paths inside nested workflow variables."""
+        current: Any = variables
+        for part in expr.split("."):
+            if isinstance(current, dict):
+                current = current.get(part)
+            else:
+                return None
+            if current is None:
+                return None
+        return current
+
+    def _coerce_context(
+        self,
+        context: Optional[Union[BrainSAITContext, Dict[str, Any]]],
+    ) -> Optional[BrainSAITContext]:
+        if context is None:
+            return None
+        if isinstance(context, BrainSAITContext):
+            return context
+        return BrainSAITContext(**context)
+
+    def _resolve_context(
+        self,
+        process: ProcessDefinition,
+        override_context: Optional[Union[BrainSAITContext, Dict[str, Any]]],
+    ) -> Optional[BrainSAITContext]:
+        merged: Dict[str, Any] = {}
+
+        if self.brainsait_context:
+            merged.update(self.brainsait_context.model_dump(exclude_none=True))
+
+        process_context = process.metadata.get("brainsait_context")
+        if isinstance(process_context, dict):
+            merged.update(process_context)
+
+        override = self._coerce_context(override_context)
+        if override:
+            merged.update(override.model_dump(exclude_none=True))
+
+        if not merged:
+            return None
+
+        return BrainSAITContext(**merged)

@@ -805,7 +805,7 @@ if __name__ == '__main__':
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-readthedocs-brightgreen.svg)](https://github.com/Fadil369/pybrain-pyheart/tree/main/pybrain-pkg#readme)
-[![PyPI](https://img.shields.io/pypi/v/pybrain.svg)](https://pypi.org/project/pybrain/)
+[![PyPI](https://img.shields.io/pypi/v/brainsait-pybrain.svg)](https://pypi.org/project/brainsait-pybrain/)
 
 PyBrain is the intelligence layer of the BrainSAIT Healthcare Unification Platform, providing AI-powered data harmonization, clinical NLP, and decision support for building next-generation healthcare systems.
 
@@ -820,17 +820,17 @@ PyBrain is the intelligence layer of the BrainSAIT Healthcare Unification Platfo
 ## 📦 Installation
 
 ```bash
-pip install pybrain
+pip install brainsait-pybrain
 ```
 
 For development:
 ```bash
-pip install pybrain[dev]
+pip install "brainsait-pybrain[dev]"
 ```
 
 For all ML features:
 ```bash
-pip install pybrain[ml,nlp]
+pip install "brainsait-pybrain[ml,nlp]"
 ```
 
 ## 🔧 Quick Start

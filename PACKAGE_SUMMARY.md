@@ -185,7 +185,7 @@ Healthcare Systems
 - ✅ Clinical workflow support
 
 ### Developer Experience:
-- ✅ Simple installation (`pip install pybrain pyheart`)
+- ✅ Simple installation (`pip install brainsait-pybrain brainsait-pyheart`)
 - ✅ Comprehensive CLI tools
 - ✅ Rich examples and documentation
 - ✅ Async/sync API support

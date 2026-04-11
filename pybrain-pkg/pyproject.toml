@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "brainsait-pybrain"
-version = "0.2.0"
+version = "0.3.0"
 description = "Unified Healthcare Intelligence Platform - AI-powered healthcare data harmonization and decision support"
 readme = "README.md"
 requires-python = ">=3.8"

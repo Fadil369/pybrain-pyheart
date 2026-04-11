@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field, HttpUrl
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from pyheart.core.context import BrainSAITContext
+
 logger = structlog.get_logger()
 
 
@@ -22,6 +24,8 @@ class ClientConfig(BaseModel):
     timeout: int = Field(default=30, description="Request timeout in seconds")
     max_retries: int = Field(default=3, description="Maximum retry attempts")
     verify_ssl: bool = Field(default=True, description="Verify SSL certificates")
+    default_headers: Dict[str, str] = Field(default_factory=dict)
+    brainsait_context: Optional[BrainSAITContext] = None
 
 
 class FHIRClient:
@@ -69,12 +73,16 @@ class FHIRClient:
             "Accept": "application/fhir+json",
             "Content-Type": "application/fhir+json"
         }
+        headers.update(self.config.default_headers)
         
         if self.config.auth_token:
             if self.config.auth_type == "bearer":
                 headers["Authorization"] = f"Bearer {self.config.auth_token}"
             elif self.config.auth_type == "basic":
                 headers["Authorization"] = f"Basic {self.config.auth_token}"
+
+        if self.config.brainsait_context:
+            headers.update(self.config.brainsait_context.to_headers())
         
         return headers
     
@@ -174,6 +182,7 @@ class FHIRClient:
         Returns:
             Created resource with server-assigned ID
         """
+        resource = self._prepare_resource(resource)
         resource_type = resource.get("resourceType")
         if not resource_type:
             raise ValueError("Resource must have resourceType")
@@ -193,6 +202,7 @@ class FHIRClient:
     
     async def create_async(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         """Async version of create"""
+        resource = self._prepare_resource(resource)
         resource_type = resource.get("resourceType")
         if not resource_type:
             raise ValueError("Resource must have resourceType")
@@ -212,6 +222,7 @@ class FHIRClient:
     
     def update(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         """Update an existing resource"""
+        resource = self._prepare_resource(resource)
         resource_type = resource.get("resourceType")
         resource_id = resource.get("id")
         
@@ -246,12 +257,34 @@ class FHIRClient:
     def batch(self, bundle: Dict[str, Any]) -> Dict[str, Any]:
         """Execute batch/transaction operations"""
         try:
-            response = self._client.post("", json=bundle)
+            response = self._client.post("", json=self._prepare_bundle(bundle))
             response.raise_for_status()
             return response.json()
         except Exception as e:
             logger.error("Batch operation failed", error=str(e))
             raise
+
+    def _prepare_resource(self, resource: Dict[str, Any]) -> Dict[str, Any]:
+        """Attach BrainSAIT metadata to outbound resources when configured."""
+        if not self.config.brainsait_context:
+            return resource
+        return self.config.brainsait_context.apply_to_resource(resource)
+
+    def _prepare_bundle(self, bundle: Dict[str, Any]) -> Dict[str, Any]:
+        """Attach BrainSAIT metadata to resources embedded in batch bundles."""
+        if not self.config.brainsait_context:
+            return bundle
+
+        prepared_bundle = dict(bundle)
+        entries = []
+        for entry in prepared_bundle.get("entry", []):
+            updated_entry = dict(entry)
+            resource = updated_entry.get("resource")
+            if isinstance(resource, dict):
+                updated_entry["resource"] = self._prepare_resource(resource)
+            entries.append(updated_entry)
+        prepared_bundle["entry"] = entries
+        return prepared_bundle
     
     def get_capabilities(self) -> Dict[str, Any]:
         """Get server capability statement"""
@@ -293,9 +326,10 @@ class HealthcareClient:
     High-level healthcare client with multi-system support
     """
     
-    def __init__(self):
+    def __init__(self, brainsait_context: Optional[BrainSAITContext] = None):
         self.fhir_clients: Dict[str, FHIRClient] = {}
         self.adapters: Dict[str, Any] = {}
+        self.brainsait_context = brainsait_context
     
     def add_fhir_system(self, name: str, client: FHIRClient):
         """Add a FHIR system"""
@@ -317,7 +351,11 @@ class HealthcareClient:
             "id": patient_id,
             "sources": {},
             "merged_demographics": {},
-            "identifiers": []
+            "identifiers": [],
+            "brainsait_context": (
+                self.brainsait_context.model_dump(exclude_none=True)
+                if self.brainsait_context else {}
+            ),
         }
         
         # Fetch from all FHIR systems
@@ -381,5 +419,29 @@ class HealthcareClient:
             # Identifiers
             if patient_data.get("identifier"):
                 unified_data["identifiers"].extend(patient_data["identifier"])
-        
+
+            if not merged.get("communication") and patient_data.get("communication"):
+                merged["communication"] = patient_data["communication"]
+
+            if not merged.get("preferredLanguage"):
+                preferred_language = self._extract_preferred_language(patient_data)
+                if preferred_language:
+                    merged["preferredLanguage"] = preferred_language
+
         unified_data["merged_demographics"] = merged
+
+    def _extract_preferred_language(self, patient_data: Dict[str, Any]) -> Optional[str]:
+        """Extract the patient's preferred language from communication blocks or extensions."""
+        communication = patient_data.get("communication", [])
+        for item in communication:
+            language = item.get("language", {})
+            for coding in language.get("coding", []):
+                code = coding.get("code")
+                if code:
+                    return code
+
+        for extension in patient_data.get("extension", []):
+            if extension.get("url", "").endswith("/preferred-language"):
+                return extension.get("valueCode")
+
+        return None

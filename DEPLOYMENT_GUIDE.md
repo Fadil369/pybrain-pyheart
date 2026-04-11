@@ -162,7 +162,7 @@ python -m venv test_env
 source test_env/bin/activate  # On Windows: test_env\Scripts\activate
 
 # Install from PyPI
-pip install pybrain pyheart
+pip install brainsait-pybrain brainsait-pyheart
 
 # Test functionality
 python -c "

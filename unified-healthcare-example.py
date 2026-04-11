@@ -946,7 +946,7 @@ This example demonstrates the power of combining PyBrain (AI Intelligence Layer)
 
 1. **Install both packages:**
 ```bash
-pip install pybrain pyheart
+pip install brainsait-pybrain brainsait-pyheart
 ```
 
 2. **Start the infrastructure:**

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-11
+
+### Added
+- **BrainSAIT Runtime Context**: Added `BrainSAITContext` so PyHeart clients and workflows can carry organization, facility, language, compliance, and workflow-profile metadata through requests and process execution.
+- **FHIR Metadata Enrichment**: PyHeart resource create, update, async, and batch operations can now stamp BrainSAIT tags, extensions, and request headers without custom per-call glue code.
+- **Workflow Context Propagation**: Workflow instances now persist BrainSAIT context, support dotted variable resolution, retain task outputs and statuses, and allow synchronous completion for orchestration-style flows.
+- **Regional Patient Harmonization**: PyBrain now normalizes bilingual Arabic/English names, preferred language, regional identifiers, and facility/region extensions for BrainSAIT-aligned patient records.
+- **Population Context Analytics**: PyBrain analytics now surface language and region distributions together with BrainSAIT-oriented care coordination recommendations.
+
+### Changed
+- **Package Distribution Names**: Updated primary installation documentation to use `brainsait-pybrain` and `brainsait-pyheart`, matching published package metadata.
+- **Release Surface**: Aligned package metadata and exported versions on `0.3.0` and corrected the release workflow install snippet to strip the leading `v` from tags.
+
+### Fixed
+- **Import Safety**: Reworked `pybrain` and `pyheart` top-level exports to lazy-load optional modules so core client and analytics imports no longer require the full server and ML dependency stack at import time.
+
 ## [0.2.0] - 2026-04-11
 
 ### Added - PyHeart Plugin System
@@ -71,5 +87,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Role-based access controls
 - Patient consent management
 
+[0.3.0]: https://github.com/Fadil369/pybrain-pyheart/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Fadil369/pybrain-pyheart/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Fadil369/pybrain-pyheart/releases/tag/v0.1.0

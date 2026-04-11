@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/Fadil369/pybrain-pyheart)
 
-A comprehensive healthcare interoperability platform combining AI-powered intelligence with seamless system integration.
+A comprehensive healthcare interoperability platform combining AI-powered intelligence with seamless system integration for BrainSAIT-style bilingual, region-aware healthcare operations.
 
 ## 🚀 Overview
 
@@ -33,7 +33,7 @@ Universal healthcare system connectivity platform providing:
 
 ```bash
 # Install both packages
-pip install pybrain pyheart
+pip install brainsait-pybrain brainsait-pyheart
 
 # Or install from this repository
 pip install -e ./pybrain-pkg

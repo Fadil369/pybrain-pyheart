@@ -54,6 +54,36 @@ def test_csv_patient_harmonization():
     assert fhir_patient["identifier"][0]["value"] == "MRN12345"
 
 
+def test_brainsait_bilingual_patient_harmonization():
+    """Test bilingual patient handling and regional BrainSAIT identifiers."""
+    harmonizer = DataHarmonizer()
+
+    custom_data = {
+        "first_name": "Fatimah",
+        "last_name": "Alotaibi",
+        "arabic_name": "فاطمة العتيبي",
+        "birth_date": "1992-07-14",
+        "gender": "F",
+        "mrn": "MRN-100",
+        "national_id": "1029384756",
+        "preferred_language": "Arabic",
+        "region": "SA",
+        "facility_id": "riyadh-main",
+    }
+
+    fhir_patient = harmonizer.harmonize_to_fhir(custom_data, "custom", "Patient")
+
+    assert fhir_patient is not None
+    assert len(fhir_patient["name"]) == 2
+    assert fhir_patient["name"][1]["text"] == "فاطمة العتيبي"
+    assert fhir_patient["identifier"][1]["value"] == "1029384756"
+    assert fhir_patient["communication"][0]["language"]["coding"][0]["code"] == "ar"
+    assert any(
+        extension["url"].endswith("/care-region") and extension["valueCode"] == "SA"
+        for extension in fhir_patient["extension"]
+    )
+
+
 def test_observation_harmonization():
     """Test observation data harmonization."""
     harmonizer = DataHarmonizer()

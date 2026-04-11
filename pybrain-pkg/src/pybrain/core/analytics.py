@@ -3,7 +3,7 @@ Analytics Engine for population health and predictive analytics
 """
 
 from typing import Any, Dict, List, Optional
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import numpy as np
 from pydantic import BaseModel
 import logging
@@ -46,7 +46,8 @@ class AnalyticsEngine:
             "risk_level": "low",
             "conditions": [],
             "trends": {},
-            "recommendations": []
+            "recommendations": [],
+            "care_context": self._extract_care_context(patient_data),
         }
         
         observations = patient_data.get("observations", [])
@@ -153,6 +154,13 @@ class AnalyticsEngine:
         
         risk_level = insights.get("risk_level", "low")
         trends = insights.get("trends", {})
+        care_context = insights.get("care_context", {})
+        preferred_language = care_context.get("preferred_language")
+        region = care_context.get("region")
+        conditions = [
+            str(condition).lower()
+            for condition in insights.get("conditions", [])
+        ]
         
         if risk_level == "high":
             recommendations.append("Schedule immediate follow-up appointment")
@@ -167,6 +175,15 @@ class AnalyticsEngine:
             recommendations.append("Monitor blood pressure daily")
         if vital_trends.get("weight", {}).get("trend") == "increasing":
             recommendations.append("Review diet and exercise plan")
+
+        if any("diabet" in condition for condition in conditions):
+            recommendations.append("Enroll patient in diabetes care coordination pathway")
+        if any("hypertension" in condition for condition in conditions):
+            recommendations.append("Review antihypertensive adherence and home BP monitoring")
+        if preferred_language == "ar":
+            recommendations.append("Provide Arabic-first outreach and education materials")
+        if region == "SA":
+            recommendations.append("Align follow-up plan with BrainSAIT regional care escalation protocol")
         
         return recommendations
     
@@ -186,6 +203,8 @@ class AnalyticsEngine:
             "common_conditions": {},
             "average_age": 0,
             "gender_distribution": {"male": 0, "female": 0, "other": 0},
+            "language_distribution": {},
+            "region_distribution": {},
             "recommendations": []
         }
         
@@ -212,6 +231,18 @@ class AnalyticsEngine:
                 metrics["gender_distribution"][gender] += 1
             else:
                 metrics["gender_distribution"]["other"] += 1
+
+            care_context = self._extract_care_context(patient_data)
+            preferred_language = care_context.get("preferred_language")
+            if preferred_language:
+                metrics["language_distribution"][preferred_language] = (
+                    metrics["language_distribution"].get(preferred_language, 0) + 1
+                )
+            region = care_context.get("region")
+            if region:
+                metrics["region_distribution"][region] = (
+                    metrics["region_distribution"].get(region, 0) + 1
+                )
             
             # Risk assessment
             observations = patient_data.get("observations", [])
@@ -260,8 +291,43 @@ class AnalyticsEngine:
         if common_conditions:
             most_common = max(common_conditions.items(), key=lambda x: x[1])
             recommendations.append(f"Develop care pathway for {most_common[0]}")
+
+        language_distribution = metrics.get("language_distribution", {})
+        if language_distribution.get("ar", 0) > 0:
+            recommendations.append("Expand Arabic outreach capacity across care coordination teams")
+
+        region_distribution = metrics.get("region_distribution", {})
+        if region_distribution.get("SA", 0) > 0:
+            recommendations.append("Coordinate BrainSAIT regional reporting and PDPL-ready follow-up workflows")
         
         return recommendations
+
+    def _extract_care_context(self, patient_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract BrainSAIT-style care context from patient-level data."""
+        patient = patient_data.get("patient", {})
+        preferred_language = None
+
+        for communication in patient.get("communication", []):
+            language = communication.get("language", {})
+            for coding in language.get("coding", []):
+                code = coding.get("code")
+                if code:
+                    preferred_language = code
+                    break
+            if preferred_language:
+                break
+
+        for extension in patient.get("extension", []):
+            url = extension.get("url", "")
+            if url.endswith("/preferred-language") and extension.get("valueCode"):
+                preferred_language = extension["valueCode"]
+            elif url.endswith("/care-region") and extension.get("valueCode"):
+                patient_data.setdefault("_care_region", extension["valueCode"])
+
+        return {
+            "preferred_language": preferred_language,
+            "region": patient_data.get("region") or patient_data.get("_care_region"),
+        }
     
     def forecast_resource_needs(self, historical_data: Dict[str, Any]) -> Dict[str, Any]:
         """

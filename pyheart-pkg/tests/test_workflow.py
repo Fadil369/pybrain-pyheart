@@ -3,6 +3,7 @@
 import pytest
 import asyncio
 from pyheart.core.workflow import WorkflowEngine, ProcessDefinition, Task, TaskType
+from pyheart.core.context import BrainSAITContext
 
 
 def test_workflow_engine_initialization():
@@ -142,3 +143,55 @@ def test_condition_evaluation():
     variables = {"age": 30}
     result = engine._evaluate_condition(condition, variables)
     assert result is False
+
+
+def test_nested_variable_substitution():
+    """Test dotted workflow variable substitution."""
+    engine = WorkflowEngine()
+
+    template = "Facility ${brainsait_context.facility_id}"
+    variables = {"brainsait_context": {"facility_id": "riyadh-main"}}
+
+    result = engine._substitute_variables(template, variables)
+    assert result == "Facility riyadh-main"
+
+
+@pytest.mark.asyncio
+async def test_start_process_with_brainsait_context():
+    """Test workflow instances keep BrainSAIT context and expose it as variables."""
+    engine = WorkflowEngine(
+        brainsait_context=BrainSAITContext(
+            facility_id="riyadh-main",
+            preferred_language="ar",
+        )
+    )
+
+    process = ProcessDefinition(
+        id="brainsait-workflow",
+        name="BrainSAIT Workflow",
+        tasks=[
+            Task(
+                id="notify",
+                name="Send Notification",
+                type=TaskType.NOTIFICATION,
+                config={
+                    "type": "email",
+                    "recipient": "${facility_id}@brainsait.example",
+                    "template": "Language ${preferred_language}",
+                },
+            )
+        ],
+    )
+
+    engine.register_process(process)
+    instance_id = await engine.start_process(
+        "brainsait-workflow",
+        wait_for_completion=True,
+    )
+
+    instance = engine.get_instance_status(instance_id)
+    assert instance is not None
+    assert instance.status.value == "completed"
+    assert instance.brainsait_context["facility_id"] == "riyadh-main"
+    assert instance.variables["preferred_language"] == "ar"
+    assert instance.variables["task_outputs"]["notify"]["recipient"] == "riyadh-main@brainsait.example"

@@ -3,6 +3,7 @@
 import pytest
 from unittest.mock import Mock, patch
 from pyheart.core.client import FHIRClient, ClientConfig
+from pyheart.core.context import BrainSAITContext
 
 
 def test_client_config():
@@ -40,6 +41,29 @@ def test_get_patient_headers(mock_client_class):
     assert "Authorization" in headers
     assert headers["Authorization"] == "Bearer test_token"
     assert headers["Accept"] == "application/fhir+json"
+
+
+def test_brainsait_context_headers():
+    """Test BrainSAIT context header propagation."""
+    context = BrainSAITContext(
+        facility_id="riyadh-main",
+        preferred_language="ar",
+        workflow_profile="basma-intake",
+    )
+    config = ClientConfig(
+        base_url="https://fhir.example.com",
+        brainsait_context=context,
+        default_headers={"X-Environment": "test"},
+    )
+    client = FHIRClient(config)
+
+    headers = client._get_headers()
+
+    assert headers["X-Environment"] == "test"
+    assert headers["X-BrainSAIT-Facility-ID"] == "riyadh-main"
+    assert headers["X-BrainSAIT-Language"] == "ar"
+    assert headers["X-BrainSAIT-Workflow-Profile"] == "basma-intake"
+    client.close()
 
 
 @patch('httpx.Client')
@@ -89,3 +113,36 @@ def test_create_resource(mock_client_class):
     assert result["resourceType"] == "Patient"
     assert result["id"] == "123"
     mock_client.post.assert_called_once()
+
+
+def test_create_resource_applies_brainsait_context():
+    """Test BrainSAIT metadata injection into outbound resources."""
+    context = BrainSAITContext(
+        facility_id="riyadh-main",
+        preferred_language="ar",
+        facility_name="Riyadh Main",
+    )
+    client = FHIRClient(ClientConfig(
+        base_url="https://fhir.example.com",
+        brainsait_context=context,
+    ))
+
+    patient_data = {
+        "resourceType": "Patient",
+        "name": [{"family": "Doe", "given": ["John"]}],
+    }
+
+    prepared = client._prepare_resource(patient_data)
+
+    assert prepared["meta"]["profile"] == [
+        "https://brainsait.com/fhir/StructureDefinition/managed-resource"
+    ]
+    assert any(
+        extension["url"].endswith("/preferred-language") and extension["valueCode"] == "ar"
+        for extension in prepared["extension"]
+    )
+    assert any(
+        tag["system"].endswith("/facility") and tag["code"] == "riyadh-main"
+        for tag in prepared["meta"]["tag"]
+    )
+    client.close()

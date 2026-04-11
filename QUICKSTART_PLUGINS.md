@@ -5,7 +5,7 @@ Get started with PyHeart's plug-and-play SDK in **5 minutes**!
 ## 📋 Prerequisites
 
 ```bash
-pip install pyheart
+pip install brainsait-pyheart
 ```
 
 ## 🏥 For Healthcare Providers

@@ -154,7 +154,7 @@ class MyCustomAdapter(Plugin):
 ### 1. Install PyHeart
 
 ```bash
-pip install pyheart
+pip install brainsait-pyheart
 ```
 
 ### 2. Run an Example
